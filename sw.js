@@ -14,14 +14,17 @@
      · 换版本务必改 VERSION，否则老缓存不会失效（activate 里会清理非当前版本）。
    ============================================================================ */
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const SHELL_CACHE = `tp-shell-${VERSION}`;
 const CDN_CACHE   = `tp-cdn-${VERSION}`;
 const IMG_CACHE   = `tp-img-${VERSION}`;
 
-/* 应用外壳：安装时就要缓存下来的文件（相对路径，随部署位置自动适配） */
+/* 应用外壳：安装时就要缓存下来的文件（相对路径，随部署位置自动适配）
+   注意：index.html 与 travel-planner.html 内容相同，两个都缓存，
+   这样无论用户从短链 "/" 还是完整路径 "/travel-planner.html" 打开，离线都能命中。 */
 const SHELL_ASSETS = [
   './',
+  './index.html',
   './travel-planner.html',
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -158,15 +161,19 @@ self.addEventListener('fetch', (event) => {
 
       try {
         const res = await fetch(req);
-        // 联网成功：顺手更新外壳缓存
+        // 联网成功：把这次真实请求的地址也缓存下来（可能是 / 或 /index.html 或 /travel-planner.html）
         const cache = await caches.open(SHELL_CACHE);
+        cache.put(req, res.clone()).catch(() => {});
+        cache.put('./index.html', res.clone()).catch(() => {});
         cache.put('./travel-planner.html', res.clone()).catch(() => {});
         return res;
       } catch (err) {
-        // 断网：回退到缓存的外壳
+        // 断网：依次回退，三个候选都试一遍
         const cache = await caches.open(SHELL_CACHE);
-        const hit = await cache.match('./travel-planner.html') ||
-                    await cache.match('./');
+        const hit = (await cache.match(req)) ||
+                    (await cache.match('./index.html')) ||
+                    (await cache.match('./travel-planner.html')) ||
+                    (await cache.match('./'));
         if (hit) return hit;
         return new Response(
           '<!doctype html><meta charset="utf-8"><title>离线</title>' +
