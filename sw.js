@@ -14,7 +14,7 @@
      · 换版本务必改 VERSION，否则老缓存不会失效（activate 里会清理非当前版本）。
    ============================================================================ */
 
-const VERSION = 'v1.1.0';
+const VERSION = 'v1.4.0';
 const SHELL_CACHE = `tp-shell-${VERSION}`;
 const CDN_CACHE   = `tp-cdn-${VERSION}`;
 const IMG_CACHE   = `tp-img-${VERSION}`;
@@ -27,6 +27,10 @@ const SHELL_ASSETS = [
   './index.html',
   './travel-planner.html',
   './manifest.webmanifest',
+  './icons.js',
+  './ai.js',
+  './favicon.ico',
+  './favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
@@ -40,8 +44,12 @@ const CDN_HOSTS = [
   'cdnjs.cloudflare.com'
 ];
 
-/* 永远不缓存的实时接口 */
+/* 永远不缓存的实时接口 / 大文件
+   注意：huggingface.co 是 WebLLM 模型权重的下载源（可达数 GB），
+   必须放行不缓存，否则会撑爆 Cache Storage 配额并拖垮浏览器。 */
 const NO_CACHE_HOSTS = [
+  'huggingface.co',
+  'hf.co',
   'restapi.amap.com',
   'webrd0.is.autonavi.com',
   'webrd01.is.autonavi.com',
