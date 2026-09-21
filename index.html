@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>旅行规划</title>
+<meta name="theme-color" content="#2bb8c4">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="旅行规划">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<!--
+  GitHub Pages 等静态托管会把目录请求指向 index.html。
+  这里直接跳到主应用，好处是 https://用户名.github.io/仓库名/ 这个短链也能用。
+  用 replace 而非 href，避免在浏览器历史里留一条记录（返回键更自然）。
+-->
+<script>
+  location.replace('./travel-planner.html' + (location.search || '') + (location.hash || ''));
+</script>
+<style>
+  html,body{height:100%;margin:0}
+  body{
+    display:flex;align-items:center;justify-content:center;
+    background:#f7fdfd;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    color:#1c3d4a;
+  }
+  .box{text-align:center}
+  .box img{width:76px;height:76px;border-radius:19px;box-shadow:0 4px 18px rgba(43,184,196,.22)}
+  .box p{margin:16px 0 0;font-size:14px;color:#8fb0bb}
+  .box a{color:#2bb8c4;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="box">
+    <img src="./icons/icon-192.png" alt="旅行规划">
+    <p>正在打开…<br><a href="./travel-planner.html">如果没有自动跳转，点这里</a></p>
+  </div>
+</body>
+</html>
