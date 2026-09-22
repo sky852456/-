@@ -23,6 +23,18 @@
   var MODEL = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
   var LIB_URL = 'https://esm.run/@mlc-ai/web-llm';
 
+  /* 模型权重下载源（按顺序尝试）
+     —— 关键：huggingface.co 在国内几乎不可达（Failed to fetch）；
+        hf-mirror.com 只镜像元数据，真实权重会被 302 到 xethub（同样不可达）。
+        实测 ModelScope（阿里，国内直连）完整托管了 MLC 格式权重，首选它。 */
+  var MODEL_BASES = [
+    'https://www.modelscope.cn/models/mlc-ai/\u0000/resolve/master', // ① 国内首选（直连实测可下）
+    'https://hf-mirror.com/mlc-ai/\u0000/resolve/main',              // ② 海外镜像兜底
+    'https://huggingface.co/mlc-ai/\u0000/resolve/main'              // ③ 官方源兜底
+  ];
+  // \u0000 是占位符，构建时替换成 model_id
+  function baseUrl(tpl, modelId) { return tpl.replace('\u0000', modelId); }
+
   var WebLLM = null;       // 动态加载的库
   var engine = null;       // 已初始化的引擎
   var loading = false;     // 是否正在加载引擎
@@ -103,17 +115,59 @@
       var lib = await loadLib();
       setStatus('首次使用需下载模型（约 1.5GB，仅一次）…');
       setProgress(0);
-      engine = await lib.CreateMLCEngine(MODEL, {
-        initProgressCallback: function (report) {
-          var p = (report && report.progress) || 0;
-          setProgress(p);
-          setStatus('下载模型中… ' + Math.round(p * 100) + '%');
+
+      /* 构造自定义 appConfig：把模型的下载地址指到国内源。
+         默认配置写死 huggingface.co，国内会 Failed to fetch。
+         这里基于 prebuiltAppConfig 拷贝一份，替换 model_list 里的 model_url。 */
+      var baseCfg = lib.prebuiltAppConfig || {};
+      var srcList = (baseCfg.model_list && baseCfg.model_list.length) ? baseCfg.model_list : [];
+
+      var lastErr = null;
+      // 依次尝试每个下载源
+      for (var i = 0; i < MODEL_BASES.length; i++) {
+        try {
+          if (i > 0) { setStatus('换备用下载源重试…'); setProgress(0); }
+          var base = baseUrl(MODEL_BASES[i], MODEL);
+          var modelList = srcList.map(function (m) {
+            if (m.model_id !== MODEL) return m;
+            return {
+              model_id: m.model_id,
+              model_lib: m.model_lib,
+              model_url: base + '/',
+              vram_required_MB: m.vram_required_MB
+            };
+          });
+          // 若库未提供 model_list，构造最小可用配置
+          if (!modelList.length) {
+            modelList = [{ model_id: MODEL, model_url: base + '/' }];
+          }
+          engine = await lib.CreateMLCEngine(MODEL, {
+            appConfig: { model_list: modelList, useIndexedDBCache: true },
+            initProgressCallback: function (report) {
+              var p = (report && report.progress) || 0;
+              setProgress(p);
+              var txt = (report && report.text) || '';
+              setStatus((txt ? txt.slice(0, 42) + ' … ' : '下载模型中… ') + Math.round(p * 100) + '%');
+            }
+          });
+          setStatus('就绪 ✅', 'ok');
+          setProgress(1);
+          return engine;
+        } catch (e) {
+          lastErr = e;
+          console.warn('[AI] 下载源失败：', baseUrl(MODEL_BASES[i], MODEL), e && e.message);
         }
-      });
-      setStatus('就绪 ✅', 'ok');
-      return engine;
+      }
+      // 全部源都失败
+      setStatus('模型下载失败（已尝试国内与海外多个源）。请检查网络后重试。', 'err');
+      throw lastErr || new Error('DOWNLOAD_FAILED');
     } catch (e) {
-      setStatus('模型加载失败：' + (e && e.message ? e.message : e) + '（可重试）', 'err');
+      if (String(e && e.message) === 'NO_WEBGPU') { /* 已提示 */ }
+      else if (String(e && e.message) === 'LOADING') { setStatus('正在下载中，请稍候…', 'warn'); }
+      else if (String(e && e.message) === 'DOWNLOAD_FAILED') { /* 上面已给出明确提示 */ }
+      else {
+        setStatus('加载失败：' + (e && e.message ? String(e.message).slice(0, 60) : e) + '（可再点功能重试）', 'err');
+      }
       throw e;
     } finally {
       loading = false;
