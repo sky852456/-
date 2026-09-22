@@ -2333,6 +2333,121 @@ function renderSidebar(){
 /* ========================= 6. 渲染: 当日行程详情 ========================= */
 function activeDay(){ return DB.days.find(d => d.id === activeDayId) || null; }
 
+/* ========================= 13.x 天气（Open-Meteo，免 key） =========================
+ * 纯前端、免 API key：https://open-meteo.com 浏览器直连（CORS *）。
+ * 用行程里已有的景点经纬度查天气，无需定位授权；按「坐标+日期」缓存 2 小时。 */
+const WMO = {
+  0:['☀️','晴'], 1:['🌤️','晴间多云'], 2:['⛅','多云'], 3:['☁️','阴'],
+  45:['🌫️','雾'], 48:['🌫️','雾凇'],
+  51:['🌦️','毛毛雨'], 53:['🌦️','毛毛雨'], 55:['🌦️','毛毛雨'], 56:['🌧️','冻毛毛雨'], 57:['🌧️','冻毛毛雨'],
+  61:['🌧️','小雨'], 63:['🌧️','中雨'], 65:['🌧️','大雨'], 66:['🌨️','冻雨'], 67:['🌨️','冻雨'],
+  71:['🌨️','小雪'], 73:['🌨️','中雪'], 75:['🌨️','大雪'], 77:['❄️','雪粒'],
+  80:['🌦️','阵雨'], 81:['🌧️','阵雨'], 82:['⛈️','强阵雨'],
+  85:['🌨️','阵雪'], 86:['🌨️','阵雪'],
+  95:['⛈️','雷雨'], 96:['⛈️','雷雨伴冰雹'], 99:['⛈️','强雷雨']
+};
+function wmoMap(c){ return WMO[c] || ['🌡️','未知']; }
+function mdShort(dt){ const p = String(dt).split('-'); return (p[1]||'?') + '/' + (p[2]||'?'); }
+function addDaysStr(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function wxRainCodes(){ return [51,53,55,56,57,61,63,65,66,67,71,73,75,77,80,81,82,85,86]; }
+/** 根据天气码/温度/降水/海拔生成出行提示（高海拔用 Open-Meteo 返回的 elevation 判断） */
+function weatherTip(code, tmin, tmax, pop, elev){
+  const tips = [], rain = wxRainCodes();
+  if (rain.includes(code) || (pop != null && pop >= 60)) tips.push('☔ 有降水，记得带伞');
+  if ([71,73,75,77,85,86].includes(code)) tips.push('❄️ 有雪，注意保暖防滑');
+  if (code >= 95) tips.push('⛈️ 雷雨天气，减少户外逗留');
+  if (tmax - tmin >= 12) tips.push('🧥 昼夜温差大，备一件外套');
+  if (elev != null && elev >= 2500) tips.push('🏔️ 高原地区，注意防晒保暖、放缓节奏防高反');
+  if (tmax >= 30) tips.push('🥵 高温，多补水');
+  if (tmin <= 0) tips.push('🥶 低温，注意防寒');
+  return tips;
+}
+/** 取当天天气查询坐标：优先用当天首个有坐标的景点，否则用留宿城市名（无坐标） */
+function weatherCoord(d){
+  const s = (d.stops || []).find(x => isCoord(x.lat, x.lng));
+  if (s) return { lat: Number(s.lat), lng: Number(s.lng), label: s.name };
+  if (d.stay) return { label: d.stay };
+  return null;
+}
+async function fetchWeather(lat, lng, start, end){
+  const key = 'wx:' + lat.toFixed(2) + ',' + lng.toFixed(2) + ':' + start + '~' + end;
+  try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && c.ts && Date.now() - c.ts < 2*3600*1000) return c.data; } catch(e){}
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max'
+    + '&current=temperature_2m,weather_code&start_date=' + start + '&end_date=' + end + '&timezone=auto';
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  const data = { elevation: j.elevation, daily: j.daily };
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
+  return data;
+}
+/** 渲染当天天气卡（异步填充） */
+async function loadDayWeather(d){
+  const card = document.getElementById('wxCard'); if (!card) return;
+  const wc = weatherCoord(d);
+  if (!wc || wc.lat == null){ card.innerHTML = '<div class="wx-none">🌤 补全当天景点坐标后，这里显示天气</div>'; return; }
+  const di = DB.days.findIndex(x => x.id === d.id);
+  const remain = Math.max(0, DB.days.length - 1 - di);
+  const end = addDaysStr(d.date, Math.min(remain, 6));   // 未来最多 7 天（含当天）
+  card.innerHTML = '<div class="wx-loading">🌤 天气加载中…</div>';
+  try {
+    const data = await fetchWeather(wc.lat, wc.lng, d.date, end);
+    if (!card.isConnected) return;
+    renderWeatherCard(card, d, wc, data);
+  } catch(e){
+    if (!card.isConnected) return;
+    card.innerHTML = '<div class="wx-none">🌤 天气获取失败（' + (e.message||e) + '），点此重试</div>';
+    card.style.cursor = 'pointer';
+    card.onclick = () => { card.onclick = null; card.style.cursor = ''; card.innerHTML = '<div class="wx-loading">🌤 重试中…</div>'; loadDayWeather(d); };
+  }
+}
+function renderWeatherCard(card, d, wc, data){
+  const dyn = data.daily || {};
+  const times = dyn.time || [];
+  const idx = Math.max(0, times.indexOf(d.date));
+  if (!times.length){ card.innerHTML = '<div class="wx-none">🌤 该日期暂无预报（可能已过期或超出范围）</div>'; return; }
+  const code = (dyn.weather_code || [])[idx] ?? 0;
+  const [icon, label] = wmoMap(code);
+  const tmax = (dyn.temperature_2m_max || [])[idx], tmin = (dyn.temperature_2m_min || [])[idx];
+  const pop  = (dyn.precipitation_probability_max || [])[idx];
+  const uv   = (dyn.uv_index_max || [])[idx];
+  const tips = weatherTip(code, tmin, tmax, pop, data.elevation);
+  if (uv != null && uv >= 6) tips.push('🕶️ 紫外线强（UV' + uv + '）涂防晒');
+  const todayHTML = `
+    <div class="wx-today" data-wx-toggle>
+      <span class="wx-ico">${icon}</span>
+      <div class="wx-main">
+        <div class="wx-label">${label} · ${esc(wc.label || '当天')}</div>
+        <div class="wx-temp">${Math.round(tmin)}° ~ ${Math.round(tmax)}°${pop != null ? ' · 降水 ' + pop + '%' : ''}</div>
+      </div>
+      <span class="wx-caret">${times.length > 1 ? '▾' : ''}</span>
+    </div>`;
+  let futureHTML = '';
+  if (times.length > 1){
+    futureHTML = times.map((dt, i) => {
+      if (i === idx) return '';
+      const [ic, lb] = wmoMap((dyn.weather_code || [])[i] ?? 0);
+      const p = (dyn.precipitation_probability_max || [])[i];
+      return `<div class="wx-frow">
+        <span class="wx-fdate">${mdShort(dt)}</span>
+        <span class="wx-fico">${ic}</span>
+        <span class="wx-flb">${lb}</span>
+        <span class="wx-ftemp">${Math.round((dyn.temperature_2m_min||[])[i])}°~${Math.round((dyn.temperature_2m_max||[])[i])}°${p != null ? ' · ' + p + '%' : ''}</span>
+      </div>`;
+    }).join('');
+  }
+  const tipHTML = tips.length ? `<div class="wx-tips">${tips.map(t => `<span class="wx-tip">${t}</span>`).join('')}</div>` : '';
+  card.className = 'wx-card';
+  card.innerHTML = todayHTML + tipHTML + (futureHTML ? `<div class="wx-future-wrap">${futureHTML}</div>` : '');
+  const tog = card.querySelector('[data-wx-toggle]');
+  if (tog && futureHTML) tog.onclick = () => card.classList.toggle('wx-showfuture');
+}
+
 function renderDayDetail(){
   const d = activeDay();
   if (!d){
@@ -2500,7 +2615,9 @@ function renderDayDetail(){
       </div>`;
   })() : '';
 
-  $('#stopList').innerHTML = roleHTML + transHTML + cityHTML + (parts.join('') || `
+  // 天气卡（占位，loadDayWeather 异步填充）
+  const wxHTML = `<div class="wx-card wx-placeholder" id="wxCard"><div class="wx-loading">🌤 天气</div></div>`;
+  $('#stopList').innerHTML = roleHTML + transHTML + cityHTML + wxHTML + (parts.join('') || `
     <div class="empty" style="padding:30px 18px">
       <div style="font-size:34px;line-height:1;margin-bottom:10px">${rm.ico}</div>
       <div style="font-size:15px;font-weight:700;color:var(--text-dim);margin-bottom:6px">这一天还没有安排景点</div>
@@ -2514,6 +2631,7 @@ function renderDayDetail(){
   if (bse) bse.onclick = () => stopForm(null);
 
   bindDayEvents(d);
+  loadDayWeather(d);   // 异步拉取当天+未来天气
 }
 
 /** 绑定当日详情内所有按钮 */
@@ -8835,6 +8953,29 @@ function bindGlobal(){
   @media (display-mode: standalone){
     #pwaInstallBar{ display:none !important; }
   }
+
+  /* ===================== 天气卡 ===================== */
+  .wx-card{ background:linear-gradient(135deg, rgba(43,184,196,.12), rgba(93,214,168,.10));
+    border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin-bottom:12px; }
+  .wx-card.wx-placeholder .wx-loading{ color:var(--text-mute); font-size:13px; }
+  .wx-none{ color:var(--text-mute); font-size:12.5px; line-height:1.6; }
+  .wx-today{ display:flex; align-items:center; gap:11px; cursor:default; }
+  .wx-today[data-wx-toggle]{ cursor:pointer; }
+  .wx-ico{ font-size:30px; line-height:1; }
+  .wx-main{ flex:1; min-width:0; }
+  .wx-label{ font-size:13.5px; font-weight:700; color:var(--text); }
+  .wx-temp{ font-size:12.5px; color:var(--text-dim); margin-top:2px; }
+  .wx-caret{ color:var(--text-mute); font-size:12px; }
+  .wx-tips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+  .wx-tip{ font-size:11.5px; background:rgba(245,176,77,.16); color:#c98a2e;
+    border-radius:20px; padding:3px 10px; }
+  .wx-future-wrap{ margin-top:9px; border-top:1px dashed var(--line); padding-top:8px; display:none; }
+  .wx-card.wx-showfuture .wx-future-wrap{ display:block; }
+  .wx-frow{ display:flex; align-items:center; gap:9px; font-size:12px; padding:3px 0; color:var(--text-dim); }
+  .wx-fdate{ width:42px; color:var(--text-mute); }
+  .wx-fico{ font-size:17px; width:22px; text-align:center; }
+  .wx-flb{ flex:1; min-width:0; }
+  .wx-ftemp{ color:var(--text-dim); }
 </style>
 
 <div id="pwaInstallBar">
