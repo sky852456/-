@@ -7625,12 +7625,17 @@ function applyImportToTrip(obj, tripId){
   const t = TRIPS.find(x => x.id === tripId); if (!t) return;
   t.data = migrate(obj);
   t.updatedAt = Date.now();
-  save();
-  if (activeTripId === tripId){
+  /* 关键顺序：若目标是当前激活档案，必须先把 DB / activeDayId 指向新数据再 save()。
+     否则 save() 内部的「t.data = DB 同步」会把刚导入的数据用旧 DB 覆盖回去，
+     造成「导入后无任何反应」。 */
+  const isActive = (activeTripId === tripId);
+  if (isActive){
     DB = t.data;
     activeDayId = (t.data.days && t.data.days[0] && t.data.days[0].id) || null;
-    renderAll();
+    t.activeDayId = activeDayId;
   }
+  save();
+  if (isActive) renderAll();
   renderHome();
   toast('已导入到旅行档案：' + t.name, 'ok', 4200);
 }
