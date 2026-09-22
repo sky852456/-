@@ -21,7 +21,8 @@
 
   // 中文小模型：Qwen2.5-3B-Instruct 的 4-bit WebGPU 量化版，体积小、中文好
   var MODEL = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
-  var LIB_URL = 'https://esm.run/@mlc-ai/web-llm';
+  // 钉住版本：避免 CDN 自动升级后内部字段变化导致隐性崩坏
+  var LIB_URL = 'https://esm.run/@mlc-ai/web-llm@0.2.85';
 
   /* 模型权重下载源（按顺序尝试）
      —— 关键：huggingface.co 在国内几乎不可达（Failed to fetch）；
@@ -128,18 +129,24 @@
         try {
           if (i > 0) { setStatus('换备用下载源重试…'); setProgress(0); }
           var base = baseUrl(MODEL_BASES[i], MODEL);
+          /* 注意：WebLLM 的 ModelRecord 字段名是 model（权重目录 URL），
+             不是 model_url —— 写错字段名会导致引擎读到 undefined，
+             在内部 url.endsWith("/") 处抛
+             "Cannot read properties of undefined (reading 'endsWith')"。 */
           var modelList = srcList.map(function (m) {
             if (m.model_id !== MODEL) return m;
             return {
               model_id: m.model_id,
               model_lib: m.model_lib,
-              model_url: base + '/',
-              vram_required_MB: m.vram_required_MB
+              model: base + '/',
+              vram_required_MB: m.vram_required_MB,
+              low_resource_required: m.low_resource_required,
+              overrides: m.overrides
             };
           });
           // 若库未提供 model_list，构造最小可用配置
           if (!modelList.length) {
-            modelList = [{ model_id: MODEL, model_url: base + '/' }];
+            modelList = [{ model_id: MODEL, model: base + '/' }];
           }
           engine = await lib.CreateMLCEngine(MODEL, {
             appConfig: { model_list: modelList, useIndexedDBCache: true },
