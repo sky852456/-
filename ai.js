@@ -19,8 +19,16 @@
 (function () {
   'use strict';
 
-  // 中文小模型：Qwen2.5-3B-Instruct 的 4-bit WebGPU 量化版，体积小、中文好
-  var MODEL = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+  // 候选模型链（按顺序尝试，前一个加载失败自动换下一个）：
+  //   ① 3B q4f16 —— 质量最好（约 2.5GB 显存）
+  //   ② 1.5B q4f32 —— 部分 Android GPU（如 Adreno）f16 驱动有 bug 会导致
+  //      "GPUBuffer was unmapped before mapping was resolved"，f32 可规避
+  //   ③ 1.5B q4f16 —— 显存最小（约 1.6GB），显存不足的设备兜底
+  var MODEL_CANDIDATES = [
+    'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-1.5B-Instruct-q4f32_1-MLC',
+    'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+  ];
   // 钉住版本：避免 CDN 自动升级后内部字段变化导致隐性崩坏
   var LIB_URL = 'https://esm.run/@mlc-ai/web-llm@0.2.85';
 
@@ -124,49 +132,57 @@
       var srcList = (baseCfg.model_list && baseCfg.model_list.length) ? baseCfg.model_list : [];
 
       var lastErr = null;
-      // 依次尝试每个下载源
-      for (var i = 0; i < MODEL_BASES.length; i++) {
-        try {
-          if (i > 0) { setStatus('换备用下载源重试…'); setProgress(0); }
-          var base = baseUrl(MODEL_BASES[i], MODEL);
-          /* 注意：WebLLM 的 ModelRecord 字段名是 model（权重目录 URL），
-             不是 model_url —— 写错字段名会导致引擎读到 undefined，
-             在内部 url.endsWith("/") 处抛
-             "Cannot read properties of undefined (reading 'endsWith')"。 */
-          var modelList = srcList.map(function (m) {
-            if (m.model_id !== MODEL) return m;
-            return {
-              model_id: m.model_id,
-              model_lib: m.model_lib,
-              model: base + '/',
-              vram_required_MB: m.vram_required_MB,
-              low_resource_required: m.low_resource_required,
-              overrides: m.overrides
-            };
-          });
-          // 若库未提供 model_list，构造最小可用配置
-          if (!modelList.length) {
-            modelList = [{ model_id: MODEL, model: base + '/' }];
-          }
-          engine = await lib.CreateMLCEngine(MODEL, {
-            appConfig: { model_list: modelList, useIndexedDBCache: true },
-            initProgressCallback: function (report) {
-              var p = (report && report.progress) || 0;
-              setProgress(p);
-              var txt = (report && report.text) || '';
-              setStatus((txt ? txt.slice(0, 42) + ' … ' : '下载模型中… ') + Math.round(p * 100) + '%');
+      // 依次尝试候选模型（前一个失败=当前设备跑不动/驱动不兼容，自动降级）
+      for (var c = 0; c < MODEL_CANDIDATES.length; c++) {
+        var modelId = MODEL_CANDIDATES[c];
+        if (c > 0) {
+          setProgress(0);
+          setStatus('当前设备跑不动上一个模型，自动换用更小的模型重试…（' + (c + 1) + '/' + MODEL_CANDIDATES.length + '）', 'warn');
+        }
+        // 依次尝试每个下载源
+        for (var i = 0; i < MODEL_BASES.length; i++) {
+          try {
+            if (i > 0) { setStatus('换备用下载源重试…'); setProgress(0); }
+            var base = baseUrl(MODEL_BASES[i], modelId);
+            /* 注意：WebLLM 的 ModelRecord 字段名是 model（权重目录 URL），
+               不是 model_url —— 写错字段名会导致引擎读到 undefined，
+               在内部 url.endsWith("/") 处抛
+               "Cannot read properties of undefined (reading 'endsWith')"。 */
+            var modelList = srcList.map(function (m) {
+              if (m.model_id !== modelId) return m;
+              return {
+                model_id: m.model_id,
+                model_lib: m.model_lib,
+                model: base + '/',
+                vram_required_MB: m.vram_required_MB,
+                low_resource_required: m.low_resource_required,
+                overrides: m.overrides
+              };
+            });
+            // 若库未提供 model_list，构造最小可用配置
+            if (!modelList.length) {
+              modelList = [{ model_id: modelId, model: base + '/' }];
             }
-          });
-          setStatus('就绪 ✅', 'ok');
-          setProgress(1);
-          return engine;
-        } catch (e) {
-          lastErr = e;
-          console.warn('[AI] 下载源失败：', baseUrl(MODEL_BASES[i], MODEL), e && e.message);
+            engine = await lib.CreateMLCEngine(modelId, {
+              appConfig: { model_list: modelList, useIndexedDBCache: true },
+              initProgressCallback: function (report) {
+                var p = (report && report.progress) || 0;
+                setProgress(p);
+                var txt = (report && report.text) || '';
+                setStatus((txt ? txt.slice(0, 42) + ' … ' : '下载模型中… ') + Math.round(p * 100) + '%');
+              }
+            });
+            setStatus('就绪 ✅', 'ok');
+            setProgress(1);
+            return engine;
+          } catch (e) {
+            lastErr = e;
+            console.warn('[AI] 加载失败（模型 ' + modelId + '，源 ' + (i + 1) + '）：', baseUrl(MODEL_BASES[i], modelId), e && e.message);
+          }
         }
       }
-      // 全部源都失败
-      setStatus('模型下载失败（已尝试国内与海外多个源）。请检查网络后重试。', 'err');
+      // 全部候选 × 全部源都失败
+      setStatus('模型加载失败（已尝试多个模型与下载源）。请检查网络或重启浏览器后重试。', 'err');
       throw lastErr || new Error('DOWNLOAD_FAILED');
     } catch (e) {
       if (String(e && e.message) === 'NO_WEBGPU') { /* 已提示 */ }

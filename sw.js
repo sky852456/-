@@ -14,7 +14,7 @@
      · 换版本务必改 VERSION，否则老缓存不会失效（activate 里会清理非当前版本）。
    ============================================================================ */
 
-const VERSION = 'v1.5.2';
+const VERSION = 'v1.5.3';
 const SHELL_CACHE = `tp-shell-${VERSION}`;
 const CDN_CACHE   = `tp-cdn-${VERSION}`;
 const IMG_CACHE   = `tp-img-${VERSION}`;
