@@ -1,13 +1,19 @@
 /* ============================================================================
- * ai.js — 浏览器本地 AI 助手（WebLLM / WebGPU）
+ * ai.js — AI 旅行助手（双模式：☁️ 云端 API / 📱 本地 WebLLM）
  * ----------------------------------------------------------------------------
- * 设计目标（契合用户诉求：免费、不想折腾 key、不想管后端）：
- *   · 模型在用户手机/电脑的浏览器里本地运行（WebGPU），数据不出设备、隐私好
- *   · 首次使用从 CDN 下载一次模型（约 1.5GB），之后断网也能用
- *   · 不需要任何 API key、不需要后端服务器、不需要账号
+ * 两种模式，用户可随时切换：
+ *
+ *   ☁️ 云端接口（默认，推荐）
+ *      OpenAI 兼容 /chat/completions 接口，内置 DeepSeek、智谱、硅基流动、
+ *      通义千问、Kimi 等预设。用户只需填一个 API Key，手机电脑都能跑，
+ *      生成质量远好于本地小模型。Key 仅存本机 localStorage，不上传。
+ *
+ *   📱 本地模型（离线备用）
+ *      模型在用户浏览器里本地运行（WebGPU），免费、无需账号、数据不出设备。
+ *      首次需下载约 1.5GB 权重；依赖 WebGPU，部分手机 GPU 可能跑不动。
  *
  * 覆盖的编辑场景：
- *   ✍️ 写今日行程介绍  → 写入 day.desc（当日说明，带 ✨ 标记可识别）
+ *   ✍️ 写今日行程介绍  → 写入 day.desc（带 ✨ 标记可识别）
  *   🏞️ 给景点写贴士    → 写入 stop.note
  *   🏨 补酒店信息      → 写入 hotel.note
  *   🚄 写交通提醒      → 写入 ticket.note
@@ -18,6 +24,47 @@
  * ========================================================================== */
 (function () {
   'use strict';
+
+  /* --------------------------- 云端服务商预设 --------------------------- */
+  /* 全部是 OpenAI 兼容的 /chat/completions 接口，只是地址与默认模型不同。 */
+  var PROVIDERS = {
+    deepseek: {
+      name: 'DeepSeek',
+      base: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      keyUrl: 'https://platform.deepseek.com/api_keys'
+    },
+    zhipu: {
+      name: '智谱 GLM',
+      base: 'https://open.bigmodel.cn/api/paas/v4',
+      model: 'glm-4-flash',
+      keyUrl: 'https://open.bigmodel.cn/usercenter/apikeys'
+    },
+    siliconflow: {
+      name: 'SiliconFlow',
+      base: 'https://api.siliconflow.cn/v1',
+      model: 'Qwen/Qwen2.5-7B-Instruct',
+      keyUrl: 'https://cloud.siliconflow.cn/account/ak'
+    },
+    dashscope: {
+      name: '通义千问',
+      base: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      model: 'qwen-plus',
+      keyUrl: 'https://bailian.console.aliyun.com/'
+    },
+    moonshot: {
+      name: 'Kimi',
+      base: 'https://api.moonshot.cn/v1',
+      model: 'moonshot-v1-8k',
+      keyUrl: 'https://platform.moonshot.cn/console/api-keys'
+    },
+    openai: {
+      name: 'OpenAI 兼容',
+      base: 'https://api.openai.com/v1',
+      model: 'gpt-4o-mini',
+      keyUrl: ''
+    }
+  };
 
   // 候选模型链（按顺序尝试，前一个加载失败自动换下一个）：
   //   ① 3B q4f16 —— 质量最好（约 2.5GB 显存）
@@ -44,12 +91,15 @@
   // \u0000 是占位符，构建时替换成 model_id
   function baseUrl(tpl, modelId) { return tpl.replace('\u0000', modelId); }
 
+  var CFG_KEY = 'TP_AI_CFG_V1';   // 云端配置的存储键（独立于行程数据）
+
   var WebLLM = null;       // 动态加载的库
   var engine = null;       // 已初始化的引擎
   var loading = false;     // 是否正在加载引擎
   var mockFn = null;       // 测试用：返回假回复，绕过 WebGPU + 下载
   var pending = null;      // 待采纳的动作上下文 { act, targetId }
   var lastText = '';       // 最近一次生成结果
+  var cfg = null;          // 云端配置 { mode, provider, key, model, base }
 
   /* ----------------------------- 工具 ----------------------------- */
   function $(id) { return document.getElementById(id); }
@@ -79,7 +129,44 @@
     var g = $('aiGen'); if (g) g.style.display = 'none';
   }
 
-  /* --------------------------- 加载引擎 --------------------------- */
+  /* ------------------------- 云端配置读写 ------------------------- */
+  function defaultCfg() {
+    return { mode: 'api', provider: 'deepseek', key: '', model: '', base: '' };
+  }
+  function loadCfg() {
+    if (cfg) return cfg;
+    cfg = defaultCfg();
+    try {
+      var raw = localStorage.getItem(CFG_KEY);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && typeof o === 'object') {
+          if (o.mode) cfg.mode = o.mode;
+          if (o.provider) cfg.provider = o.provider;
+          if (typeof o.key === 'string') cfg.key = o.key;
+          if (typeof o.model === 'string') cfg.model = o.model;
+          if (typeof o.base === 'string') cfg.base = o.base;
+        }
+      }
+    } catch (e) { /* 配置损坏则用默认值 */ }
+    if (!PROVIDERS[cfg.provider]) cfg.provider = 'deepseek';
+    return cfg;
+  }
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) { /* 忽略 */ }
+  }
+  function providerOf() { return PROVIDERS[cfg.provider] || PROVIDERS.deepseek; }
+  function apiBase() {
+    var b = (cfg.base || '').trim() || providerOf().base;
+    return b.replace(/\/+$/, '');   // 去掉结尾斜杠，避免 //chat/completions
+  }
+  function apiModel() {
+    return (cfg.model || '').trim() || providerOf().model;
+  }
+  /** 是否已具备云端调用条件 */
+  function apiReady() { return !!(cfg.key && cfg.key.trim()); }
+
+  /* --------------------------- 加载本地引擎 --------------------------- */
   async function loadLib() {
     if (WebLLM) return WebLLM;
     setStatus('正在加载 AI 引擎库…');
@@ -90,6 +177,15 @@
       throw e;
     }
     return WebLLM;
+  }
+
+  /** 丢弃本地引擎（加载失败或运行中崩溃时调用）。
+      关键：不重置的话，engine 会残留一个「半初始化」的坏对象，
+      后续 generate() 直接打到坏引擎上，就会出现
+      "Model not loaded before trying to complete ChatCompletionRequest"。 */
+  function resetEngine() {
+    engine = null;
+    loading = false;
   }
 
   async function getEngine() {
@@ -115,7 +211,7 @@
       return engine;
     }
     if (!hasWebGPU()) {
-      setStatus('当前浏览器不支持 WebGPU（需 Chrome / Edge 113+ 或安卓 Chrome）。可改用云端版。', 'err');
+      setStatus('当前浏览器不支持 WebGPU（需 Chrome / Edge 113+ 或安卓 Chrome）。可切换到「云端接口」模式。', 'err');
       throw new Error('NO_WEBGPU');
     }
     if (loading) throw new Error('LOADING');
@@ -127,7 +223,7 @@
 
       /* 构造自定义 appConfig：把模型的下载地址指到国内源。
          默认配置写死 huggingface.co，国内会 Failed to fetch。
-         这里基于 prebuiltAppConfig 拷贝一份，替换 model_list 里的 model_url。 */
+         这里基于 prebuiltAppConfig 拷贝一份，替换 model_list 里的下载地址。 */
       var baseCfg = lib.prebuiltAppConfig || {};
       var srcList = (baseCfg.model_list && baseCfg.model_list.length) ? baseCfg.model_list : [];
 
@@ -172,19 +268,25 @@
                 setStatus((txt ? txt.slice(0, 42) + ' … ' : '下载模型中… ') + Math.round(p * 100) + '%');
               }
             });
+            // 防御：引擎对象可能存在但未真正就绪（部分驱动下静默失败）
+            if (!engine || !engine.chat || !engine.chat.completions) {
+              throw new Error('ENGINE_NOT_READY');
+            }
             setStatus('就绪 ✅', 'ok');
             setProgress(1);
             return engine;
           } catch (e) {
+            resetEngine();   // 关键：清掉半初始化的坏引擎，下次重试才会重建
             lastErr = e;
             console.warn('[AI] 加载失败（模型 ' + modelId + '，源 ' + (i + 1) + '）：', baseUrl(MODEL_BASES[i], modelId), e && e.message);
           }
         }
       }
       // 全部候选 × 全部源都失败
-      setStatus('模型加载失败（已尝试多个模型与下载源）。请检查网络或重启浏览器后重试。', 'err');
+      setStatus('本地模型加载失败（已尝试多个模型与下载源）。可切换到「云端接口」模式，或检查网络后重试。', 'err');
       throw lastErr || new Error('DOWNLOAD_FAILED');
     } catch (e) {
+      resetEngine();
       if (String(e && e.message) === 'NO_WEBGPU') { /* 已提示 */ }
       else if (String(e && e.message) === 'LOADING') { setStatus('正在下载中，请稍候…', 'warn'); }
       else if (String(e && e.message) === 'DOWNLOAD_FAILED') { /* 上面已给出明确提示 */ }
@@ -197,32 +299,148 @@
     }
   }
 
-  /* --------------------------- 生成（流式） --------------------------- */
-  async function generate(system, user, onToken) {
-    var eng = await getEngine();
-    var resp = await eng.chat.completions.create({
+  /* ----------------------- 生成：云端（OpenAI 兼容） ----------------------- */
+  /** 把接口返回的非 2xx 响应翻译成人话 */
+  function friendlyHttpError(status, bodyText) {
+    var detail = '';
+    try {
+      var j = JSON.parse(bodyText);
+      detail = (j.error && (j.error.message || j.error.code)) || j.message || '';
+    } catch (e) { detail = String(bodyText || '').slice(0, 160); }
+    if (status === 401) return 'API Key 无效或已过期，请检查 Key（状态码 401）' + (detail ? '：' + detail : '');
+    if (status === 402) return '账户余额不足，请充值后重试（状态码 402）' + (detail ? '：' + detail : '');
+    if (status === 403) return '无权限（403），可能是 Key 未开通该模型' + (detail ? '：' + detail : '');
+    if (status === 404) return '接口地址或模型名不对（404），请检查「模型名/接口地址」' + (detail ? '：' + detail : '');
+    if (status === 429) return '请求太频繁或额度用尽（429），稍后重试' + (detail ? '：' + detail : '');
+    if (status >= 500) return '服务端错误（' + status + '），稍后重试' + (detail ? '：' + detail : '');
+    return '接口错误（' + status + '）' + (detail ? '：' + detail : '');
+  }
+
+  /** 流式调用云端接口；不支持流式时自动降级为一次性返回 */
+  async function generateCloud(system, user, onToken) {
+    if (!apiReady()) {
+      var ps = providerOf();
+      setStatus('还没填 API Key。请在「云端接口」里填入 ' + ps.name + ' 的 Key' + (ps.keyUrl ? '（点下方链接可申请）' : ''), 'err');
+      throw new Error('NO_API_KEY');
+    }
+    var url = apiBase() + '/chat/completions';
+    var body = {
+      model: apiModel(),
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user }
       ],
-      stream: true,
       temperature: 0.7,
-      max_tokens: 512
-    });
-    // 兼容 WebLLM 的异步迭代器流式返回
-    var out = '';
-    if (resp && typeof resp[Symbol.asyncIterator] === 'function') {
-      for await (var chunk of resp) {
-        var d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
-        if (d) { out += d; if (onToken) onToken(out); }
-      }
-    } else if (resp && resp.choices && resp.choices[0] && resp.choices[0].delta) {
-      // 非流式兜底（测试钩子返回的结构）
-      out = resp.choices[0].delta.content || '';
-      if (onToken) onToken(out);
+      max_tokens: 600,
+      stream: true
+    };
+
+    var resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + cfg.key.trim()
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      // 跨域 / 网络不通 / 地址写错
+      throw new Error('无法连接接口（' + e.message + '）。请检查网络，或确认「接口地址」是否正确');
     }
+
+    if (!resp.ok) {
+      var txt = '';
+      try { txt = await resp.text(); } catch (e2) { /* 忽略 */ }
+      throw new Error(friendlyHttpError(resp.status, txt));
+    }
+
+    // 没有流式 body（少数兼容实现）→ 直接读整段 JSON
+    if (!resp.body || typeof resp.body.getReader !== 'function') {
+      var j = await resp.json();
+      var full = (((j.choices || [])[0] || {}).message || {}).content || '';
+      if (onToken) onToken(full);
+      return full;
+    }
+
+    // 逐块解析 SSE
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder('utf-8');
+    var buf = '';
+    var out = '';
+    while (true) {
+      var r = await reader.read();
+      if (r.done) break;
+      buf += decoder.decode(r.value, { stream: true });
+      var lines = buf.split('\n');
+      buf = lines.pop();                        // 最后一段可能不完整，留到下一轮
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li].trim();
+        if (!line || line.charAt(0) === ':') continue;
+        if (line.indexOf('data:') !== 0) continue;
+        var data = line.slice(5).trim();
+        if (data === '[DONE]') { li = lines.length; buf = ''; break; }
+        var chunk = null;
+        try { chunk = JSON.parse(data); } catch (e3) { continue; }
+        if (chunk.error) throw new Error(chunk.error.message || '接口返回错误');
+        var d = (chunk.choices || [])[0] || {};
+        var piece = (d.delta && d.delta.content) || '';
+        if (piece) { out += piece; if (onToken) onToken(out); }
+      }
+      if (buf === '' && out && lines.length && lines[lines.length - 1].trim() === 'data: [DONE]') break;
+    }
+    if (!out) throw new Error('接口没有返回内容，可能是模型名不对或额度不足');
     return out;
   }
+
+  /* --------------------------- 生成（统一入口） --------------------------- */
+  function setProgressForMode() {
+    // 云端模式没有下载进度，进度条直接给满
+    var wrap = $('aiProgWrap');
+    if (cfg.mode === 'api') {
+      if (wrap) wrap.style.display = 'none';
+    } else {
+      if (wrap) wrap.style.display = '';
+    }
+  }
+
+  async function generate(system, user, onToken) {
+    if (cfg.mode === 'api') return generateCloud(system, user, onToken);
+
+    // 本地模式
+    var eng = await getEngine();
+    try {
+      var resp = await eng.chat.completions.create({
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ],
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 512
+      });
+      // 兼容 WebLLM 的异步迭代器流式返回
+      var out = '';
+      if (resp && typeof resp[Symbol.asyncIterator] === 'function') {
+        for await (var chunk of resp) {
+          var d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
+          if (d) { out += d; if (onToken) onToken(out); }
+        }
+      } else if (resp && resp.choices && resp.choices[0] && resp.choices[0].delta) {
+        // 非流式兜底（测试钩子返回的结构）
+        out = resp.choices[0].delta.content || '';
+        if (onToken) onToken(out);
+      }
+      return out;
+    } catch (e) {
+      /* 运行期崩溃（典型如 GPU 设备掉线 "GPUBuffer was unmapped..."）：
+         把坏引擎丢掉，下次点击会重新初始化，而不是永远报 "Model not loaded" */
+      resetEngine();
+      throw e;
+    }
+  }
+
 
   /* --------------------------- 数据读取 --------------------------- */
   function dayText(d) {
@@ -299,8 +517,19 @@
     pending = { act: act, targetId: target };
     var p = buildPrompt(act, target);
     if (!p.user) { setStatus('没有可用数据，请先完善行程', 'err'); return; }
+
+    // 云端模式未填 Key：直接提示，别让用户空等
+    if (cfg.mode === 'api' && !apiReady()) {
+      var ps = providerOf();
+      $('aiCfgApi').classList.add('show');
+      $('aiCfgLocal').classList.remove('show');
+      setStatus('请先填入 ' + ps.name + ' 的 API Key' + (ps.keyUrl ? '（下方有申请链接）' : ''), 'err');
+      var ki = $('aiKey'); if (ki) ki.focus();
+      return;
+    }
+
     $('aiOut').style.display = 'none';
-    setStatus('正在生成…');
+    setStatus(cfg.mode === 'api' ? '正在生成…' : '正在生成…（首次需先加载模型）');
     setProgress(1);
     generate(p.system, p.user, function (partial) { showOut(partial); })
       .then(function (full) {
@@ -310,8 +539,10 @@
         setProgress(1);
       })
       .catch(function (e) {
-        if (String(e && e.message) === 'NO_WEBGPU') return; // 已提示
-        setStatus('生成失败：' + (e && e.message ? e.message : e), 'err');
+        var msg = e && e.message ? e.message : String(e);
+        if (msg === 'NO_WEBGPU' || msg === 'NO_API_KEY') return;   // 上面已给出明确提示
+        if (msg === 'LOADING') { setStatus('模型正在加载中，请稍候再点', 'warn'); return; }
+        setStatus('生成失败：' + msg, 'err');
       });
   }
 
@@ -393,24 +624,122 @@
     }
   }
 
+  /* --------------------------- 模式 / 配置 UI --------------------------- */
+  /** 切换模式：同步 tab 高亮、弹窗标题徽标、配置面板、进度条显隐 */
+  function applyMode() {
+    var isApi = cfg.mode === 'api';
+    var tabApi = $('aiTabApi'), tabLocal = $('aiTabLocal');
+    if (tabApi) tabApi.classList.toggle('active', isApi);
+    if (tabLocal) tabLocal.classList.toggle('active', !isApi);
+
+    var badge = $('aiBadge');
+    if (badge) badge.textContent = isApi ? '云端 AI' : '本地 AI';
+
+    var cfgApi = $('aiCfgApi'), cfgLocal = $('aiCfgLocal');
+    if (cfgApi) cfgApi.classList.toggle('show', isApi);
+    if (cfgLocal) cfgLocal.classList.toggle('show', !isApi);
+
+    setProgressForMode();
+
+    if (isApi) {
+      var ps = providerOf();
+      if (apiReady()) setStatus('已配置 ' + ps.name + ' · ' + apiModel() + '，点下方功能即可开始', 'ok');
+      else setStatus('填入 API Key 后即可使用（Key 只存本机）');
+    } else {
+      if (engine) setStatus('本地模型已就绪 ✅', 'ok');
+      else if (loading) setStatus('模型加载中…', 'warn');
+      else if (!hasWebGPU()) setStatus('当前浏览器不支持 WebGPU，本地模型可能无法运行', 'warn');
+      else setStatus('点下方功能即可开始（首次会下载约 1.5GB 模型）');
+    }
+  }
+
+  /** 把配置回填到表单 */
+  function fillForm() {
+    var prov = $('aiProvider'), key = $('aiKey'), model = $('aiModel'), base = $('aiBase'), hint = $('aiKeyHint');
+    if (prov) prov.value = cfg.provider;
+    if (key) key.value = cfg.key || '';
+    if (model) model.value = cfg.model || '';
+    if (base) base.value = cfg.base || '';
+    updateHint(hint);
+  }
+
+  function updateHint(hint) {
+    if (!hint) return;
+    var ps = providerOf();
+    var parts = [];
+    if (ps.keyUrl) parts.push('申请 Key：<a href="' + ps.keyUrl + '" target="_blank" rel="noopener">' + ps.name + ' 控制台</a>');
+    parts.push('默认模型：<b>' + ps.model + '</b>');
+    parts.push('默认地址：<code>' + ps.base + '</code>');
+    hint.innerHTML = parts.join('　·　') + '<br>Key 保存在本机浏览器，不会上传到任何服务器。';
+  }
+
+  /** 从表单读取配置并保存 */
+  function readForm() {
+    var prov = $('aiProvider'), key = $('aiKey'), model = $('aiModel'), base = $('aiBase');
+    if (prov) cfg.provider = prov.value;
+    if (key) cfg.key = key.value;
+    if (model) cfg.model = model.value;
+    if (base) cfg.base = base.value;
+    saveCfg();
+  }
+
+  /** 测试连接：发一条极短请求，验证 Key / 地址 / 模型是否可用 */
+  async function testConn() {
+    readForm();
+    if (!apiReady()) { setStatus('请先填入 API Key', 'err'); return; }
+    setStatus('正在测试连接…');
+    try {
+      var out = await generateCloud('你是一个助手，只回答「OK」。', '请回复 OK', null);
+      setStatus('连接成功 ✅ ' + providerOf().name + ' · ' + apiModel() + '（返回：' + String(out).trim().slice(0, 20) + '）', 'ok');
+    } catch (e) {
+      setStatus('连接失败：' + (e && e.message ? e.message : e), 'err');
+    }
+  }
+
   function openModal() {
     var m = $('aiMask'); if (m) m.classList.add('show');
-    if (!hasWebGPU() && !mockFn) {
-      setStatus('提示：检测不到 WebGPU，可能无法在本地运行模型（需 Chrome/Edge 113+）。', 'warn');
-    } else if (!engine && !loading) {
-      setStatus('点击上方功能即可开始（首次会下载模型）');
-    }
+    applyMode();
   }
   function closeModal() {
     var m = $('aiMask'); if (m) m.classList.remove('show');
+    // 关窗即存配置，避免用户改完 Key 直接关掉就丢了
+    if (cfg && cfg.mode === 'api') { readForm(); }
   }
 
   function init() {
+    loadCfg();
+    fillForm();
+
     var fab = $('aiFab');
     if (fab) fab.onclick = openModal;
     var close = $('aiClose'); if (close) close.onclick = closeModal;
     var mask = $('aiMask');
     if (mask) mask.onclick = function (e) { if (e.target === mask) closeModal(); };
+
+    // 模式切换
+    var tabApi = $('aiTabApi'), tabLocal = $('aiTabLocal');
+    if (tabApi) tabApi.onclick = function () { cfg.mode = 'api'; saveCfg(); applyMode(); };
+    if (tabLocal) tabLocal.onclick = function () { cfg.mode = 'local'; saveCfg(); applyMode(); };
+
+    // 配置项：改动即存
+    var prov = $('aiProvider');
+    if (prov) prov.onchange = function () {
+      cfg.provider = prov.value;
+      cfg.model = '';   // 换服务商 → 模型名与地址回到该商默认
+      cfg.base = '';
+      var mi = $('aiModel'); if (mi) mi.value = '';
+      var bi = $('aiBase'); if (bi) bi.value = '';
+      saveCfg();
+      updateHint($('aiKeyHint'));
+      setStatus('已切换到 ' + providerOf().name + '，请确认 Key 是否正确');
+    };
+    ['aiKey', 'aiModel', 'aiBase'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.addEventListener('change', function () { readForm(); });
+      el.addEventListener('blur', function () { readForm(); });
+    });
+    var test = $('aiTest'); if (test) test.onclick = testConn;
 
     var actions = document.querySelectorAll('#aiActions .ai-act');
     Array.prototype.forEach.call(actions, function (b) {
@@ -431,6 +760,8 @@
     };
     // Esc 关闭
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+    applyMode();
   }
 
   // 暴露测试钩子 + 状态接口
@@ -441,8 +772,27 @@
     run: runAction,
     adopt: adopt,
     getEngine: getEngine,
-    status: function () { return { ready: !!engine, loading: loading, webgpu: hasWebGPU() }; },
-    __setMock: function (fn) { mockFn = fn; }
+    status: function () {
+      return {
+        ready: cfg.mode === 'api' ? apiReady() : !!engine,
+        mode: cfg.mode,
+        loading: loading,
+        webgpu: hasWebGPU(),
+        provider: cfg.provider,
+        model: apiModel()
+      };
+    },
+    __setMock: function (fn) { mockFn = fn; },
+    // 测试 / 自动化用
+    __cfg: function () { return cfg; },
+    __setCfg: function (patch) {
+      loadCfg();
+      if (patch) { for (var k in patch) { if (Object.prototype.hasOwnProperty.call(patch, k)) cfg[k] = patch[k]; } }
+      saveCfg();
+      return cfg;
+    },
+    __test: testConn,
+    __gen: generateCloud
   };
 
   if (document.readyState === 'loading') {

@@ -1232,7 +1232,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 }
 
 /* ==================== AI 助手（浏览器本地模型） ==================== */
-#aiFab{position:fixed;right:18px;bottom:84px;z-index:900;width:54px;height:54px;border-radius:50%;
+#aiFab{position:fixed;right:18px;bottom:84px;z-index:1600;width:54px;height:54px;border-radius:50%;
   border:none;cursor:pointer;font-size:23px;line-height:1;color:#fff;
   background:linear-gradient(135deg,#7c5cff,#2bb8c4);box-shadow:0 8px 22px rgba(43,184,196,.42);
   transition:transform .22s cubic-bezier(.3,1.4,.5,1),box-shadow .22s;}
@@ -1242,7 +1242,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
   background:#fff;color:#7c5cff;border-radius:8px;padding:1px 5px;box-shadow:0 1px 4px rgba(0,0,0,.16);}
 @media(max-width:880px){#aiFab{bottom:76px;right:14px;width:50px;height:50px;}}
 
-#aiMask{position:fixed;inset:0;z-index:1000;background:rgba(12,32,40,.5);backdrop-filter:blur(3px);
+#aiMask{position:fixed;inset:0;z-index:1700;background:rgba(12,32,40,.5);backdrop-filter:blur(3px);
   display:none;align-items:flex-end;justify-content:center;}
 #aiMask.show{display:flex;}
 @media(min-width:700px){#aiMask{align-items:center;}}
@@ -1260,6 +1260,21 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 .ai-body{padding:16px 18px 22px;}
 .ai-note{font-size:11.5px;color:var(--text-mute);line-height:1.7;margin-bottom:13px;
   background:var(--bg-soft);border-radius:10px;padding:9px 12px;}
+/* 模式切换（云端 API / 本地模型） */
+.ai-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--bg-soft);
+  border-radius:11px;padding:4px;margin-bottom:12px;}
+.ai-tab{border:none;background:transparent;color:var(--text-mute);font-size:12.5px;font-weight:800;
+  padding:8px 6px;border-radius:8px;cursor:pointer;transition:.16s;font-family:inherit;}
+.ai-tab.active{background:var(--panel);color:#7c5cff;box-shadow:0 1px 4px rgba(0,0,0,.09);}
+.ai-cfg{display:none;margin-bottom:12px;}
+.ai-cfg.show{display:block;}
+.ai-cfg label{font-size:11.5px;font-weight:700;color:var(--text-mute);display:block;margin:9px 0 4px;}
+.ai-cfg input,.ai-cfg select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+  background:var(--panel-2);color:var(--text);font-size:13px;font-family:inherit;}
+.ai-cfg .ai-hint{font-size:11px;color:var(--text-mute);line-height:1.6;margin-top:8px;}
+.ai-cfg .ai-hint a{color:#7c5cff;}
+.ai-testbtn{margin-top:10px;padding:8px 16px;border-radius:9px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
 .ai-status{font-size:12.5px;font-weight:700;color:var(--text-mute);margin:9px 0;min-height:18px;}
 .ai-status.ok{color:#1a9c6e;}.ai-status.err{color:var(--danger);}.ai-status.warn{color:#d99413;}
 #aiProgress{height:100%;width:0;background:linear-gradient(90deg,#7c5cff,#2bb8c4);border-radius:5px;transition:width .3s;}
@@ -1534,16 +1549,50 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 <div id="aiMask">
   <div class="ai-modal" role="dialog" aria-modal="true" aria-label="AI 助手">
     <div class="ai-head">
-      <span class="ai-badge">本地 AI</span>
+      <span class="ai-badge" id="aiBadge">云端 AI</span>
       <h3>AI 旅行助手</h3>
       <button class="ai-x" id="aiClose" aria-label="关闭">✕</button>
     </div>
     <div class="ai-body">
-      <div class="ai-note">
-        模型在你的设备上<b>本地运行</b>，<b>完全免费</b>、无需账号、数据不出设备，联网缓存一次后断网也能用。<br>
-        首次启用会下载模型（约 1.5GB，仅一次）；需要 Chrome / Edge 113+ 等支持 WebGPU 的浏览器。
+      <div class="ai-tabs">
+        <button class="ai-tab active" id="aiTabApi" data-mode="api">☁️ 云端接口</button>
+        <button class="ai-tab" id="aiTabLocal" data-mode="local">📱 本地模型</button>
       </div>
-      <div class="ai-progwrap"><div id="aiProgress"></div></div>
+
+      <!-- ===== 云端 API 配置 ===== -->
+      <div class="ai-cfg show" id="aiCfgApi">
+        <div class="ai-note">
+          填一个<b>大模型 API Key</b> 即可用，生成质量比本地小模型好很多，手机电脑都能跑。<br>
+          Key 只保存在你这台设备的浏览器里，不会上传到任何服务器。
+        </div>
+        <label>服务商</label>
+        <select id="aiProvider">
+          <option value="deepseek">DeepSeek（推荐，便宜）</option>
+          <option value="zhipu">智谱 GLM（有免费额度）</option>
+          <option value="siliconflow">SiliconFlow 硅基流动（有免费额度）</option>
+          <option value="dashscope">通义千问 DashScope</option>
+          <option value="moonshot">Kimi 月之暗面</option>
+          <option value="openai">OpenAI 兼容 / 自建</option>
+        </select>
+        <label>API Key</label>
+        <input id="aiKey" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false">
+        <label>模型名（留空用默认）</label>
+        <input id="aiModel" type="text" placeholder="" autocomplete="off" spellcheck="false">
+        <label>接口地址（留空用默认）</label>
+        <input id="aiBase" type="text" placeholder="" autocomplete="off" spellcheck="false">
+        <button class="ai-testbtn" id="aiTest">🔌 测试连接</button>
+        <div class="ai-hint" id="aiKeyHint"></div>
+      </div>
+
+      <!-- ===== 本地模型说明 ===== -->
+      <div class="ai-cfg" id="aiCfgLocal">
+        <div class="ai-note">
+          模型在你的设备上<b>本地运行</b>，<b>完全免费</b>、无需账号、数据不出设备，联网缓存一次后断网也能用。<br>
+          首次启用会下载模型（约 1.5GB，仅一次）；需要 Chrome / Edge 113+ 等支持 WebGPU 的浏览器。
+        </div>
+      </div>
+
+      <div class="ai-progwrap" id="aiProgWrap"><div id="aiProgress"></div></div>
       <div class="ai-status" id="aiStatus">就绪后点击下方功能即可开始</div>
 
       <div class="ai-actions" id="aiActions">
