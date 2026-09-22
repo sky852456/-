@@ -2184,7 +2184,7 @@ function renameTrip(id, isNew){
 function copyTrip(id){
   const t = TRIPS.find(x => x.id === id); if (!t) return;
   (async () => {
-    const enc = await encodeShare(t.data);
+    const enc = await encodeShare(sharePayload(t.data, t));
     const ok = await copyToClipboard(enc);
     if (ok) toast(`已复制「${t.name}」的分享文本（${enc.length} 字符）`, 'ok', 5000);
     else openModal('📋 复制分享文本', `<div style="font-size:13px;line-height:1.85;color:var(--text-dim)">请长按复制下方文本并发到另一台设备：</div><textarea id="copyArea" readonly style="width:100%;height:150px;margin-top:10px;font-family:monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px">${enc}</textarea>`, [{ text:'关闭', cls:'primary', onClick: c => c() }]);
@@ -2196,8 +2196,11 @@ function exportTrip(id){
   const t = TRIPS.find(x => x.id === id); if (!t) return;
   const stamp = new Date().toISOString().slice(0, 10);
   const safe = (t.name || 'trip').replace(/[^\w一-龥-]/g, '_');
+  /* 导出时带上 名称/图标/颜色，这样另一台设备导入后能还原整个旅行档案的身份，
+     而不只是行程数据。旧版纯 data 备份仍可被新版导入（unpackMeta 兼容）。 */
+  const payload = JSON.stringify({ name: t.name, emoji: t.emoji, color: t.color, data: t.data }, null, 2);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(t.data, null, 2)], { type:'application/json' }));
+  a.href = URL.createObjectURL(new Blob([payload], { type:'application/json' }));
   a.download = `行程备份_${safe}_${stamp}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
@@ -2205,9 +2208,26 @@ function exportTrip(id){
   renderHome();
 }
 
+/** 从外部数据解包：区分「新格式 {name,emoji,color,data}」与「旧格式 纯 data」。
+ *  旧版导出的纯 data 备份没有 meta，这里 meta 返回空，导入走原逻辑（文件名/默认名）。 */
+function unpackMeta(obj){
+  if (obj && typeof obj === 'object' && obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data))
+    return { meta: { name: obj.name || '', emoji: obj.emoji || '', color: obj.color || '' }, data: obj.data };
+  return { meta: {}, data: obj };
+}
+
 /** 从外部数据（文件/分享文本/扫码）新增一个旅行档案，不覆盖当前 */
 function addTripFromData(obj, name){
-  const t = { id: uid(), name: name || obj.title || '导入的旅行', emoji: randEmoji(), color: '', createdAt: Date.now(), updatedAt: Date.now(), activeDayId: null, data: migrate(obj) };
+  const { meta, data } = unpackMeta(obj);
+  // 名字优先级：传入的 name（如文件名）> 备份里带的旅行名 > 默认「导入的旅行」
+  const t = {
+    id: uid(),
+    name: (name || meta.name || '').trim() || '导入的旅行',
+    emoji: meta.emoji || randEmoji(),
+    color: meta.color || '',
+    createdAt: Date.now(), updatedAt: Date.now(), activeDayId: null,
+    data: migrate(data)
+  };
   TRIPS.push(t);
   save();
   openTrip(t.id);
@@ -2413,6 +2433,7 @@ function renderDayDetail(){
           <button class="btn small" data-up="${s.id}" ${i === 0 ? 'disabled style="opacity:.4"' : ''}>↑ 上移</button>
           <button class="btn small" data-down="${s.id}" ${i === d.stops.length-1 ? 'disabled style="opacity:.4"' : ''}>↓ 下移</button>
           <button class="btn small" data-locate="${s.id}">🗺️ 地图定位</button>
+          <button class="btn small" data-xhs-stop="${s.id}">📕 小红书</button>
           <button class="btn small danger" data-delstop="${s.id}">🗑 删除</button>
         </div>
       </div>
@@ -2539,6 +2560,11 @@ function bindDayEvents(d){
   $$('#stopList [data-down]').forEach(b => b.onclick = () => {
     const i = d.stops.findIndex(x => x.id === b.dataset.down);
     if (i >= 0 && i < d.stops.length - 1){ [d.stops[i+1], d.stops[i]] = [d.stops[i], d.stops[i+1]]; save(); renderAll(); }
+  });
+  // 小红书搜索（优先唤起 App，失败回退网页）
+  $$('#stopList [data-xhs-stop]').forEach(b => b.onclick = () => {
+    const s = d.stops.find(x => x.id === b.dataset.xhsStop);
+    if (s) openXiaohongshu(s.name);
   });
   // 地图定位（无坐标时先尝试自动补全再跳转）
   $$('#stopList [data-locate]').forEach(b => b.onclick = async () => {
@@ -3719,6 +3745,7 @@ function renderHotels(){
         ${hasGeo ? `<button class="btn small ghost" data-map="${h.id}">🗺️ 在地图查看</button>`
                  : `<span class="chip gray" style="font-size:11px">未填坐标</span>`}
         <button class="btn small ghost" data-search="${h.id}">🔍 搜索房价</button>
+        <button class="btn small ghost" data-xhs="${h.id}">📕 小红书</button>
         <div style="flex:1"></div>
         <button class="btn small ghost" data-edit="${h.id}">✏️ 编辑</button>
         <button class="btn small danger" data-del="${h.id}">🗑</button>
@@ -3741,6 +3768,10 @@ function renderHotels(){
   $$('#hotelList [data-search]').forEach(b => b.onclick = () => {
     const h = DB.hotels.find(x => x.id === b.dataset.search);
     if (h) openHotelSearch(h);
+  });
+  $$('#hotelList [data-xhs]').forEach(b => b.onclick = () => {
+    const h = DB.hotels.find(x => x.id === b.dataset.xhs);
+    if (h) openXiaohongshu(h.name);
   });
   $$('#hotelList [data-map]').forEach(b => b.onclick = () => {
     const h = DB.hotels.find(x => x.id === b.dataset.map);
@@ -3807,6 +3838,34 @@ function openHotelSearch(h){
     { text:'关闭', cls:'ghost', onClick: c => c() },
     { text:'📝 填回价格', cls:'primary', onClick: c => { c(); hotelForm(h); } }
   ]);
+}
+
+/**
+ * 跳转到小红书搜索指定地名/酒店名。
+ * 优先尝试唤起小红书 App（xhsdiscover:// scheme），
+ * 若未安装 App 或被浏览器拦截（页面未离开），1.2s 后回退到网页搜索页。
+ */
+function openXiaohongshu(kw){
+  const name = (kw || '').trim();
+  if (!name) { toast('没有可搜索的地名', 'warn'); return; }
+  const enc = encodeURIComponent(name);
+  const web = 'https://www.xiaohongshu.com/search_result?keyword=' + enc;
+  const scheme = 'xhsdiscover://search/result?keyword=' + enc;
+  let timer = null;
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    document.removeEventListener('visibilitychange', onLeave);
+    document.removeEventListener('pagehide', onLeave);
+  };
+  const onLeave = () => { cancel(); };   // App 接管理应页隐藏 → 取消回退
+  document.addEventListener('visibilitychange', onLeave);
+  document.addEventListener('pagehide', onLeave);
+  timer = setTimeout(() => {
+    cancel();
+    window.open(web, '_blank');           // 没被 App 接管 → 回退网页搜索页
+  }, 1200);
+  try { location.href = scheme; }
+  catch (e) { cancel(); window.open(web, '_blank'); }
 }
 
 /** 酒店新增/编辑表单 */
@@ -7435,7 +7494,9 @@ function pickFileImport(targetTripId){
     reader.onload = () => {
       try{
         const obj = JSON.parse(reader.result);
-        if (!obj || typeof obj !== 'object' || !Array.isArray(obj.days))
+        // 新格式：{name,emoji,color,data:{days...}}；旧格式：纯 data {days...}
+        const probe = (obj && obj.data && Array.isArray(obj.data.days)) ? obj.data : obj;
+        if (!obj || typeof obj !== 'object' || !Array.isArray(probe.days))
           throw new Error('不是有效的行程备份文件');
         if (targetTripId){
           // 从首页卡片「导入」进入：导入到指定旅行，覆盖其现有数据
@@ -7526,6 +7587,13 @@ function stripImgs(o){
   return c;
 }
 
+/** 把旅行的 名称/图标/颜色 与 data 打包进分享/备份，导入时可一并还原名字。
+ *  @param {object} data 行程数据（t.data）
+ *  @param {object} [trip] 显式传入的旅行档案；不传则取当前激活档案 */
+function sharePayload(data, trip){
+  const t = trip || TRIPS.find(x => x.id === activeTripId);
+  return { name: t ? t.name : '', emoji: t ? t.emoji : '', color: t ? t.color : '', data: data };
+}
 async function encodeShare(obj){
   const gz = await gzipStr(JSON.stringify(obj));
   return gz ? 'G' + bytesToB64(gz) : 'B' + strToB64(JSON.stringify(obj));
@@ -7552,10 +7620,10 @@ async function qrShare(){
   if (typeof window.QRCode === 'undefined')
     return toast('二维码库未能加载（需联网），请改用「导出备份文件」', 'err', 5000);
   let enc, stripped = false;
-  enc = await encodeShare(DB);
+  enc = await encodeShare(sharePayload(DB));
   const LIMIT = 2850;   // 二维码 version40 容量：纠错级 L≈2953 / M≈2331 字符（base64 为 ASCII）
   if (enc.length > LIMIT){
-    const enc2 = await encodeShare(stripImgs(DB));
+    const enc2 = await encodeShare(sharePayload(stripImgs(DB)));
     if (enc2.length <= LIMIT){ enc = enc2; stripped = true; }
     else {
       openModal('📲 分享二维码', `
@@ -7669,10 +7737,15 @@ async function handleScanned(data, targetTripId){
   }
 }
 
-/** 把导入的数据写入指定旅行档案（覆盖其 data，保留档案名/图标/颜色等卡片身份） */
+/** 把导入的数据写入指定旅行档案（覆盖其 data，并用导入里带的 名称/图标/颜色 还原档案身份） */
 function applyImportToTrip(obj, tripId){
   const t = TRIPS.find(x => x.id === tripId); if (!t) return;
-  t.data = migrate(obj);
+  const { meta, data } = unpackMeta(obj);
+  t.data = migrate(data);
+  // 导入数据里带了名字/图标/颜色就一并应用（还原整个旅行档案的身份）；没带则保留原样
+  if (meta.name) t.name = meta.name;
+  if (meta.emoji) t.emoji = meta.emoji;
+  if (meta.color) t.color = meta.color;
   t.updatedAt = Date.now();
   /* 关键顺序：若目标是当前激活档案，必须先把 DB / activeDayId 指向新数据再 save()。
      否则 save() 内部的「t.data = DB 同步」会把刚导入的数据用旧 DB 覆盖回去，
@@ -7723,7 +7796,7 @@ async function copyToClipboard(text){
   }catch(e){ return false; }
 }
 async function copyShareText(){
-  const enc = await encodeShare(DB);
+  const enc = await encodeShare(sharePayload(DB));
   const ok = await copyToClipboard(enc);
   if (ok){
     toast(`已复制分享文本（${enc.length} 字符），把它发到另一台设备，再点「导入 → 从分享文本」粘贴即可同步`, 'ok', 5200);
