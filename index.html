@@ -2065,6 +2065,7 @@ function renderHome(){
         <button class="mini ghost" data-rename="${t.id}">改名</button>
         <button class="mini ghost" data-share="${t.id}">分享</button>
         <button class="mini ghost" data-export="${t.id}">导出</button>
+        <button class="mini ghost" data-import="${t.id}">导入</button>
         <button class="mini danger" data-del="${t.id}">删除</button>
       </div>
     </div>`;
@@ -2073,6 +2074,7 @@ function renderHome(){
   $$('#tripGrid [data-rename]').forEach(b => b.onclick = e => { e.stopPropagation(); renameTrip(b.dataset.rename); });
   $$('#tripGrid [data-share]').forEach(b => b.onclick = e => { e.stopPropagation(); copyTrip(b.dataset.share); });
   $$('#tripGrid [data-export]').forEach(b => b.onclick = e => { e.stopPropagation(); exportMenu(b.dataset.export); });
+  $$('#tripGrid [data-import]').forEach(b => b.onclick = e => { e.stopPropagation(); importMenu(b.dataset.import); });
   $$('#tripGrid [data-del]').forEach(b => b.onclick = e => { e.stopPropagation(); deleteTrip(b.dataset.del); });
   $$('#tripGrid .trip-card').forEach(c => c.onclick = () => openTrip(c.dataset.trip));
 }
@@ -7375,7 +7377,7 @@ async function exportPoster(tripId){
   }
 }
 
-function pickFileImport(){
+function pickFileImport(targetTripId){
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.json,application/json';
   input.onchange = () => {
@@ -7386,8 +7388,13 @@ function pickFileImport(){
         const obj = JSON.parse(reader.result);
         if (!obj || typeof obj !== 'object' || !Array.isArray(obj.days))
           throw new Error('不是有效的行程备份文件');
-        // 导入 = 新增一个旅行档案，不覆盖当前正在看的
-        addTripFromData(obj, (f.name || '').replace(/\.json$/i, '') || '导入的旅行');
+        if (targetTripId){
+          // 从首页卡片「导入」进入：导入到指定旅行，覆盖其现有数据
+          confirmImportInto(targetTripId, obj);
+        } else {
+          // 导入 = 新增一个旅行档案，不覆盖当前正在看的
+          addTripFromData(obj, (f.name || '').replace(/\.json$/i, '') || '导入的旅行');
+        }
       }catch(e){
         console.error(e);
         toast('导入失败：' + e.message, 'err', 4500);
@@ -7399,10 +7406,15 @@ function pickFileImport(){
 }
 function importJSON(){ pickFileImport(); }   // 兼容旧绑定
 
-/** 「导入」按钮：弹窗选择 文件 / 分享文本 两种方式 */
-function importMenu(){
+/** 「导入」按钮：弹窗选择 文件 / 分享文本 两种方式
+ *  @param {string} [targetTripId] 传入则导入到该旅行档案（覆盖其数据）；不传则新增一个旅行档案 */
+function importMenu(targetTripId){
+  const target = targetTripId ? TRIPS.find(x => x.id === targetTripId) : null;
+  const tip = target
+    ? `将导入到旅行档案「<b>${esc(target.name)}</b>」，<b>覆盖其现有数据</b>（建议先「导出」备份）。`
+    : `选择导入方式（将<b>新增一个旅行档案</b>，不会覆盖现有行程）：`;
   openModal('⬆️ 导入数据', `
-    <div style="font-size:13px;line-height:1.9;color:var(--text-dim)">选择导入方式（将<b>新增一个旅行档案</b>，不会覆盖现有行程）：</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--text-dim)">${tip}</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
       <button class="btn" id="imFile" style="justify-content:flex-start;text-align:left">
         📂 <div><div style="font-weight:700">从备份文件导入</div>
@@ -7415,13 +7427,13 @@ function importMenu(){
     </div>`,
     [
       { text:'取消', cls:'ghost', onClick: c => c() },
-      { text:'扫码导入', cls:'primary', onClick: c => { c(); qrScanImport(); } }
+      { text:'扫码导入', cls:'primary', onClick: c => { c(); qrScanImport(targetTripId); } }
     ]
   );
   setTimeout(() => {
     const f = $('#imFile'), t = $('#imText');
-    if (f) f.onclick = () => { closeModal(); pickFileImport(); };
-    if (t) t.onclick = () => { closeModal(); pasteImport(); };
+    if (f) f.onclick = () => { closeModal(); pickFileImport(targetTripId); };
+    if (t) t.onclick = () => { closeModal(); pasteImport(targetTripId); };
   }, 60);
 }
 
@@ -7542,17 +7554,18 @@ async function qrShare(){
 }
 
 /* ---- 扫码导入（手机端，调用摄像头） ---- */
-let qrStream = null, qrRAF = null;
+let qrStream = null, qrRAF = null, qrTargetTripId = null;
 function stopQrScan(){
   if (qrRAF){ cancelAnimationFrame(qrRAF); qrRAF = null; }
   if (qrStream){ qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
 }
-async function qrScanImport(){
+async function qrScanImport(targetTripId){
   if (typeof jsQR === 'undefined')
     return toast('扫码库未能加载（需联网），请用「导入备份文件」', 'err', 5000);
   stopQrScan();
+  qrTargetTripId = targetTripId || null;
   openModal('📷 扫码导入', `
-    <div style="font-size:13px;line-height:1.8">把摄像头对准另一台设备屏幕上的「分享二维码」，自动读取并导入。</div>
+    <div style="font-size:13px;line-height:1.8">把摄像头对准另一台设备屏幕上的「分享二维码」，自动读取并导入。${targetTripId ? '将导入到该旅行档案并覆盖其现有数据。' : ''}</div>
     <div style="display:flex;justify-content:center;margin-top:10px">
       <video id="qrVideo" playsinline muted
         style="width:100%;max-width:320px;border-radius:10px;background:#000;aspect-ratio:1/1;object-fit:cover"></video>
@@ -7582,7 +7595,7 @@ async function startQrScan(){
         ctx.drawImage(video, 0, 0, cv.width, cv.height);
         const img = ctx.getImageData(0, 0, cv.width, cv.height);
         const res = jsQR(img.data, cv.width, cv.height);
-        if (res && res.data){ stopQrScan(); handleScanned(res.data); return; }
+        if (res && res.data){ stopQrScan(); handleScanned(res.data, qrTargetTripId); return; }
       }
       qrRAF = requestAnimationFrame(tick);
     };
@@ -7592,14 +7605,44 @@ async function startQrScan(){
       + '。可改用「导入备份文件」。';
   }
 }
-async function handleScanned(data){
+async function handleScanned(data, targetTripId){
   try{
     const obj = await decodeShare(data);
-    closeModal();
-    addTripFromData(obj);   // 新增一个旅行档案，不覆盖当前正在看的
+    if (targetTripId){
+      closeModal();
+      confirmImportInto(targetTripId, obj);   // 导入到指定旅行，覆盖其现有数据
+    } else {
+      closeModal();
+      addTripFromData(obj);   // 新增一个旅行档案，不覆盖当前正在看的
+    }
   }catch(e){
     toast('扫码内容无法解析：' + e.message, 'err', 5000);
   }
+}
+
+/** 把导入的数据写入指定旅行档案（覆盖其 data，保留档案名/图标/颜色等卡片身份） */
+function applyImportToTrip(obj, tripId){
+  const t = TRIPS.find(x => x.id === tripId); if (!t) return;
+  t.data = migrate(obj);
+  t.updatedAt = Date.now();
+  save();
+  if (activeTripId === tripId){
+    DB = t.data;
+    activeDayId = (t.data.days && t.data.days[0] && t.data.days[0].id) || null;
+    renderAll();
+  }
+  renderHome();
+  toast('已导入到旅行档案：' + t.name, 'ok', 4200);
+}
+
+/** 导入到指定旅行前的覆盖确认（与删除卡片的确认风格一致） */
+function confirmImportInto(tripId, obj){
+  const t = TRIPS.find(x => x.id === tripId); if (!t) return;
+  confirmBox(
+    `确定用导入内容覆盖旅行档案「${t.name}」的现有数据吗？\n该档案内的全部行程、票务、记账、手账都会被替换（建议先「导出」备份）。`,
+    () => applyImportToTrip(obj, tripId),
+    '确认导入并覆盖'
+  );
 }
 
 /* ---- 复制分享文本 / 粘贴文本导入（纯文本兜底，不依赖摄像头） ---- */
@@ -7644,10 +7687,10 @@ async function copyShareText(){
     setTimeout(() => { const ta = $('#copyArea'); if (ta){ ta.focus(); ta.select(); } }, 120);
   }
 }
-function pasteImport(){
+function pasteImport(targetTripId){
   openModal('📥 粘贴文本导入', `
     <div style="font-size:13px;line-height:1.85;color:var(--text-dim)">
-      把另一台设备「复制分享文本」或「导出备份」得到的内容粘贴到下面（以 <b>G</b> / <b>B</b> 开头的一长串字符，或直接是 JSON 文本均可）。导入将<b>新增一个旅行档案</b>，不会覆盖现有行程：
+      把另一台设备「复制分享文本」或「导出备份」得到的内容粘贴到下面（以 <b>G</b> / <b>B</b> 开头的一长串字符，或直接是 JSON 文本均可）。${targetTripId ? '导入将<b>覆盖该旅行档案的现有数据</b>' : '导入将<b>新增一个旅行档案</b>，不会覆盖现有行程'}：
     </div>
     <textarea id="pasteArea" placeholder="在此粘贴分享文本…"
       style="width:100%;height:150px;margin-top:10px;font-family:monospace;font-size:12px;
@@ -7658,7 +7701,7 @@ function pasteImport(){
         const v = ($('#pasteArea').value || '').trim();
         if (!v){ toast('请先粘贴分享文本', 'warn'); return; }
         c();
-        await handleScanned(v);   // 复用解码 + 覆盖确认流程
+        await handleScanned(v, targetTripId);   // 复用解码 + 覆盖确认流程
       } }
     ]
   );
