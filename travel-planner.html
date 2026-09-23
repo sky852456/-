@@ -1296,6 +1296,49 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 .ai-out-btns{display:flex;gap:8px;padding:0 12px 12px;}
 .ai-out-btns button{padding:8px 15px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--text);}
 #aiAdopt{background:#1a9c6e!important;border-color:#1a9c6e!important;color:#fff!important;}
+
+/* ==========================================================================
+   8. 照片视频生成器
+   ========================================================================== */
+#vidMask{position:fixed;inset:0;z-index:2100;background:rgba(6,12,22,.8);backdrop-filter:blur(5px);
+  display:none;flex-direction:column;}
+#vidMask.show{display:flex;animation:fade .18s ease;}
+.vid-box{width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg);}
+.vid-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);
+  background:var(--panel);padding-top:calc(12px + env(safe-area-inset-top));}
+.vid-head h3{margin:0;font-size:15.5px;font-weight:800;}
+.vid-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+.vid-foot{display:flex;gap:10px;padding:10px 14px;border-top:1px solid var(--line);background:var(--panel);
+  padding-bottom:calc(10px + env(safe-area-inset-bottom));}
+.vid-sec{border:1px solid var(--line);border-radius:13px;padding:12px;background:var(--panel);}
+.vid-sec h4{margin:0 0 10px;font-size:13px;font-weight:800;color:var(--text-dim);display:flex;align-items:center;gap:7px;}
+.vid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:7px;}
+.vid-thumb{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;background:#0b1220;border:1px solid var(--line);}
+.vid-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.vid-thumb .vt-no{position:absolute;left:3px;top:3px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;
+  font-weight:800;padding:1px 5px;border-radius:5px;}
+.vid-thumb .vt-x{position:absolute;right:2px;top:2px;width:20px;height:20px;border-radius:50%;border:none;
+  background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:20px;cursor:pointer;padding:0;}
+.vid-thumb .vt-mv{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;}
+.vid-thumb .vt-mv button{flex:1;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:11px;height:20px;
+  cursor:pointer;padding:0;line-height:20px;}
+.vid-thumb .vt-mv button:first-child{border-right:1px solid rgba(255,255,255,.2);}
+.vid-empty{font-size:12.5px;color:var(--text-mute);padding:14px 4px;text-align:center;line-height:1.7;}
+.vid-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px;}
+.vid-hint{font-size:12px;color:var(--text-mute);line-height:1.7;margin-top:7px;}
+.vid-lab{font-size:12.5px;color:var(--text-dim);font-weight:700;}
+.vid-chk{font-size:12.5px;color:var(--text-dim);display:flex;align-items:center;gap:5px;font-weight:600;}
+.vid-sel{padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+  color:var(--text);font-size:12.5px;font-family:inherit;}
+.vid-inp{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+  color:var(--text);font-size:13px;font-family:inherit;}
+.vid-bar{height:9px;background:var(--bg-soft);border-radius:5px;overflow:hidden;margin:2px 0 6px;}
+.vid-bar-in{height:100%;width:0;background:linear-gradient(90deg,#7c5cff,#2bb8c4);border-radius:5px;transition:width .2s;}
+.vid-preview{width:100%;max-height:46vh;background:#000;border-radius:11px;display:block;}
+@media(max-width:640px){
+  .vid-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr));}
+  .vid-foot .btn{flex:1;}
+}
 </style>
 </head>
 <body>
@@ -1519,12 +1562,14 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
         <span class="chip gray" id="journalSummary">—</span>
         <div class="grow"></div>
         <button class="btn small" id="btnAutoJournal2">✨ 按行程自动建</button>
+        <button class="btn small primary" id="btnVideoMaker">🎬 照片视频</button>
         <button class="btn small primary" id="btnAddJournal">＋ 新建手账</button>
       </div>
       <div class="panel-body">
         <div class="jn-tip">
           💡 上传旅途中的照片，选个喜欢的风格（<b>拼贴 / 漫画 / 拍立得 / 胶片</b>），
-          自动帮你排成一本好看的手账；「💥 全部漫画化」可把照片转成漫画分镜效果，还能导出成长图保存或分享。
+          自动帮你排成一本好看的手账；「💥 全部漫画化」可把照片转成漫画分镜效果，还能导出成长图保存或分享。<br>
+          🎬 <b>照片视频</b>：把照片一键剪成竖屏小视频（可加自己的背景音乐），生成后可直接保存/分享。
         </div>
         <div id="journalList"><!-- JS 渲染 --></div>
       </div>
@@ -1637,6 +1682,112 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 <!-- 图片放大查看 -->
 <div class="modal-mask" id="imgViewer" style="z-index:2500">
   <img id="imgViewerImg" style="max-width:96vw;max-height:92vh;border-radius:12px;box-shadow:0 20px 60px rgba(20,110,130,.45)">
+</div>
+
+<!-- ==================== 照片视频生成器 ==================== -->
+<div id="vidMask" aria-hidden="true">
+  <div class="vid-box">
+    <div class="vid-head">
+      <span style="font-size:17px">🎬</span>
+      <h3>照片视频</h3>
+      <div class="grow" style="flex:1"></div>
+      <span class="chip gray" id="vidMode">—</span>
+      <button class="btn small ghost" id="vidClose" aria-label="关闭">✕</button>
+    </div>
+
+    <div class="vid-body">
+      <!-- 照片 -->
+      <div class="vid-sec">
+        <h4>🖼 照片 <span class="chip gray" id="vidCount">0 张</span></h4>
+        <div class="vid-grid" id="vidGrid"></div>
+        <div class="vid-empty" id="vidPhotoEmpty">还没有照片，点下面「＋ 添加照片」把风景照 / 合照传进来</div>
+        <div class="vid-row">
+          <button class="btn small primary" id="vidAddPhoto">＋ 添加照片</button>
+          <button class="btn small ghost" id="vidFromJournal">📔 从手账带入</button>
+          <button class="btn small danger" id="vidClearPhoto">清空</button>
+          <span class="vid-hint">用 ← → 调整顺序，建议 15~30 张</span>
+        </div>
+        <input type="file" id="vidPhotoInput" accept="image/*" multiple hidden>
+      </div>
+
+      <!-- 音乐 -->
+      <div class="vid-sec">
+        <h4>🎵 背景音乐</h4>
+        <div class="vid-row">
+          <button class="btn small" id="vidPickAudio">选择音乐文件</button>
+          <button class="btn small ghost" id="vidPlayAudio" disabled>▶ 试听</button>
+          <button class="btn small danger" id="vidDelAudio" disabled>移除</button>
+        </div>
+        <div class="vid-hint" id="vidAudioInfo" style="margin-top:8px">未选择音乐 · 生成的视频将没有声音</div>
+        <div class="vid-row" id="vidVolRow" style="margin-top:8px;display:none">
+          <span class="vid-lab">音量</span>
+          <input type="range" id="vidVol" min="0" max="100" value="75" style="flex:1;min-width:120px">
+          <span class="vid-lab" id="vidVolTxt">75%</span>
+        </div>
+        <input type="file" id="vidAudioInput" accept="audio/*" hidden>
+      </div>
+
+      <!-- 参数 -->
+      <div class="vid-sec">
+        <h4>⚙️ 参数</h4>
+        <div class="vid-row">
+          <span class="vid-lab">每张</span>
+          <select id="vidPer" class="vid-sel">
+            <option value="1.5">1.5 秒</option>
+            <option value="2">2 秒</option>
+            <option value="3" selected>3 秒</option>
+            <option value="4">4 秒</option>
+            <option value="5">5 秒</option>
+          </select>
+          <span class="vid-lab">转场</span>
+          <select id="vidTrans" class="vid-sel">
+            <option value="fade" selected>淡入淡出</option>
+            <option value="slide">滑动</option>
+            <option value="none">直接切</option>
+          </select>
+        </div>
+        <div class="vid-row">
+          <span class="vid-lab">画面</span>
+          <select id="vidFit" class="vid-sel">
+            <option value="blur" selected>完整显示（背景虚化）</option>
+            <option value="cover">裁切填满</option>
+          </select>
+          <label class="vid-chk"><input type="checkbox" id="vidKB" checked> 缓慢推近</label>
+          <label class="vid-chk"><input type="checkbox" id="vidFast" checked> ⚡ 极速模式</label>
+        </div>
+        <div class="vid-row">
+          <span class="vid-lab">片尾文字</span>
+          <input type="text" id="vidTitle" class="vid-inp" placeholder="留空则不加片尾" style="flex:1;min-width:120px">
+        </div>
+        <div class="vid-hint" id="vidEst">—</div>
+      </div>
+
+      <!-- 进度 -->
+      <div class="vid-sec" id="vidProgSec" style="display:none">
+        <h4 id="vidProgTitle">正在生成…</h4>
+        <div class="vid-bar"><div class="vid-bar-in" id="vidBar"></div></div>
+        <div class="vid-hint" id="vidProgTxt">0%</div>
+      </div>
+
+      <!-- 成品 -->
+      <div class="vid-sec" id="vidOutSec" style="display:none">
+        <h4>✅ 成品</h4>
+        <video id="vidPreview" class="vid-preview" controls playsinline loop></video>
+        <div class="vid-row" style="margin-top:10px">
+          <button class="btn primary" id="vidDownload">⬇️ 保存视频</button>
+          <button class="btn" id="vidShare">📤 分享</button>
+          <button class="btn ghost" id="vidAgain">重新生成</button>
+        </div>
+        <div class="vid-hint" id="vidOutInfo">—</div>
+      </div>
+    </div>
+
+    <div class="vid-foot">
+      <button class="btn ghost" id="vidCancel">关闭</button>
+      <div class="grow" style="flex:1"></div>
+      <button class="btn primary" id="vidGo">🎬 生成视频</button>
+    </div>
+  </div>
 </div>
 
 <div id="toasts"></div>
@@ -2411,19 +2562,28 @@ function renderWeatherCard(card, d, wc, data){
   const times = dyn.time || [];
   const idx = Math.max(0, times.indexOf(d.date));
   if (!times.length){ card.innerHTML = '<div class="wx-none">🌤 该日期暂无预报（可能已过期或超出范围）</div>'; return; }
-  const code = (dyn.weather_code || [])[idx] ?? 0;
-  const [icon, label] = wmoMap(code);
+  // 实况：仅当行程当天就是「今天」时，用 current（Open-Meteo 实时）显示此刻温度/天气
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const isToday = (d.date === todayStr);
+  const cur = (isToday && data.current) ? data.current : null;
+  const showCode = (cur && cur.weather_code != null) ? cur.weather_code : ((dyn.weather_code || [])[idx] ?? 0);
+  const [icon, label] = wmoMap(showCode);
   const tmax = (dyn.temperature_2m_max || [])[idx], tmin = (dyn.temperature_2m_min || [])[idx];
   const pop  = (dyn.precipitation_probability_max || [])[idx];
   const uv   = (dyn.uv_index_max || [])[idx];
-  const tips = weatherTip(code, tmin, tmax, pop, data.elevation);
+  const tips = weatherTip((dyn.weather_code || [])[idx] ?? 0, tmin, tmax, pop, data.elevation);
   if (uv != null && uv >= 6) tips.push('🕶️ 紫外线强（UV' + uv + '）涂防晒');
+  const curTemp = (cur && cur.temperature_2m != null) ? Math.round(cur.temperature_2m) : null;
+  const tempLine = isToday
+    ? `此刻 ${curTemp != null ? curTemp + '°' : '—'} · 预报 ${Math.round(tmin)}° ~ ${Math.round(tmax)}°${pop != null ? ' · 降水 ' + pop + '%' : ''}`
+    : `${Math.round(tmin)}° ~ ${Math.round(tmax)}°${pop != null ? ' · 降水 ' + pop + '%' : ''}`;
   const todayHTML = `
     <div class="wx-today" data-wx-toggle>
       <span class="wx-ico">${icon}</span>
       <div class="wx-main">
-        <div class="wx-label">${label} · ${esc(wc.label || '当天')}</div>
-        <div class="wx-temp">${Math.round(tmin)}° ~ ${Math.round(tmax)}°${pop != null ? ' · 降水 ' + pop + '%' : ''}</div>
+        <div class="wx-label">${label} · ${esc(wc.label || '当天')}${isToday ? ' · 今天' : ''}</div>
+        <div class="wx-temp">${tempLine}</div>
       </div>
       <span class="wx-caret">${times.length > 1 ? '▾' : ''}</span>
     </div>`;
@@ -4213,6 +4373,633 @@ const JSTYLES = [
 /** 当前编辑中的手账对象（表单作用域外，供保存回调读取） */
 let tempJournalImg = null;
 
+/* ==========================================================================
+ * 🎬 照片视频生成器
+ * --------------------------------------------------------------------------
+ * 纯前端：照片 / 音乐 / 成片一律留在本机，不上传任何服务器。
+ * 两条生成路径，自动择优：
+ *   ① 极速模式：WebCodecs 编码 + mp4-muxer 封装 → 真·MP4（H.264 + AAC），几秒出片
+ *   ② 实时模式：canvas.captureStream + MediaRecorder → 画面音乐同步，耗时≈视频时长
+ * 极速模式任一环节不可用（老 Safari / 离线无法拉 muxer / 编码器不支持）自动回退②。
+ * ========================================================================== */
+const VID = {
+  open: false,
+  photos: [],        // {id,url,img,bg,name}
+  audioURL: '', audioName: '', audioDur: 0, decoded: null, finalBuf: null,
+  blob: null, blobUrl: '', ext: 'mp4',
+  busy: false, journalId: '', fastOK: null, stall: false
+};
+const VID_W = 1080, VID_H = 1920, VID_FPS = 30;
+
+function vidCurTripName(){
+  const t = TRIPS.find(x => x.id === activeTripId);
+  return (t && t.name) || (DB && DB.name) || '';
+}
+
+/** 段位：照片段 + 可选片尾段 */
+function vidSeg(){
+  const per = parseFloat($('#vidPer').value) || 3;
+  const n = VID.photos.length;
+  const seg = n * per;
+  const hasEnd = !!($('#vidTitle') && $('#vidTitle').value.trim());
+  const endDur = hasEnd ? 2.6 : 0;
+  return { per, seg, endDur, total: seg + endDur };
+}
+
+function vidUpdateEst(){
+  const S = vidSeg();
+  const el = $('#vidEst');
+  if (!el) return;
+  if (!VID.photos.length){ el.textContent = '先添加照片，再看时长估算'; return; }
+  const music = VID.audioDur
+    ? ` · 音乐 ${VID.audioDur.toFixed(0)}s${VID.audioDur < S.total ? '（不足将循环）' : '（超出会自动截断）'}`
+    : ' · 无音乐';
+  const fast = $('#vidFast') && $('#vidFast').checked;
+  el.innerHTML =
+    `${VID.photos.length} 张 × ${S.per}s${S.endDur ? ' + 片尾 ' + S.endDur + 's' : ''} ≈ <b>${S.total.toFixed(1)} 秒</b>（1080×1920 竖屏）${music}` +
+    `<br>生成方式：<b>${fast ? '⚡ 极速（离线编码，几秒完成）' : '实时录制（耗时≈视频长度，请保持页面在前台）'}</b>` +
+    (VID.fastOK === false ? '<br><span style="color:#b45309">本设备不支持极速模式（缺 H.264 硬件编码），已切换为实时录制。</span>' : '');
+}
+
+/** 探一探这台设备能不能走极速模式（WebCodecs H.264） */
+async function vidProbeFast(){
+  try{
+    if (typeof VideoEncoder === 'undefined' || !VideoEncoder.isConfigSupported) throw 0;
+    const s = await VideoEncoder.isConfigSupported({
+      codec: 'avc1.42001f', width: VID_W, height: VID_H, bitrate: 8_000_000, framerate: VID_FPS
+    });
+    VID.fastOK = !!s.supported;
+  }catch(e){ VID.fastOK = false; }
+  const cb = $('#vidFast');
+  if (cb){
+    cb.checked = !!VID.fastOK;
+    cb.disabled = !VID.fastOK;
+    cb.parentElement.title = VID.fastOK ? '离线编码，几秒出片' : '本设备不支持，已自动关闭';
+  }
+  vidUpdateEst();
+}
+
+/* ---------- 弹层开关 ---------- */
+function openVideoMaker(j){
+  VID.open = true; VID.journalId = j ? j.id : ''; VID.blob = null; VID.blobUrl = '';
+  $('#vidMask').classList.add('show');
+  $('#vidMask').setAttribute('aria-hidden', 'false');
+  $('#vidOutSec').style.display = 'none';
+  $('#vidProgSec').style.display = 'none';
+  if ($('#vidTitle') && !$('#vidTitle').value) $('#vidTitle').value = vidCurTripName();
+  // 若从某本手账点进来 → 直接带入它的照片
+  if (j && j.photos && j.photos.length){
+    (async () => {
+      for (const p of j.photos){
+        if (!p.img) continue;
+        const img = await vidLoadImg(p.img);
+        const it = { id: uid(), url: p.img, img, name: p.caption || '' };
+        vidPrepBg(it); VID.photos.push(it);
+      }
+      vidRenderPhotos(); vidUpdateEst();
+      toast(`已带入手账「${j.title}」的照片`);
+    })();
+  }
+  vidRenderPhotos(); vidUpdateEst();
+  if (VID.fastOK === null) vidProbeFast();
+}
+
+function closeVideoMaker(){
+  if (VID.busy) return toast('正在生成，请等一下（或等结束后再关闭）', 'warn');
+  VID.open = false;
+  $('#vidMask').classList.remove('show');
+  $('#vidMask').setAttribute('aria-hidden', 'true');
+  if (VID.audioURL) URL.revokeObjectURL(VID.audioURL);
+  VID.audioURL = ''; VID.audioName = ''; VID.audioDur = 0; VID.decoded = null; VID.finalBuf = null;
+  VID.photos.forEach(p => { if (p.url && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url); });
+  VID.photos = [];
+  if ($('#vidPreview')) $('#vidPreview').removeAttribute('src');
+}
+
+/* ---------- 照片 ---------- */
+function vidLoadImg(src){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('load fail'));
+    img.src = src;
+  });
+}
+
+/** 预生成模糊背景（只做一次，避免每帧做 blur 拖慢渲染） */
+function vidPrepBg(p){
+  try{
+    const bw = 360, bh = 640;
+    const c = document.createElement('canvas'); c.width = bw; c.height = bh;
+    const cx = c.getContext('2d');
+    const iw = p.img.naturalWidth || p.w || 1, ih = p.img.naturalHeight || p.h || 1;
+    if ('filter' in cx) cx.filter = 'blur(14px)';
+    const s = Math.max(bw / iw, bh / ih);
+    cx.drawImage(p.img, (bw - iw * s) / 2, (bh - ih * s) / 2, iw * s, ih * s);
+    if ('filter' in cx) cx.filter = 'none';
+    cx.fillStyle = 'rgba(0,0,0,.34)'; cx.fillRect(0, 0, bw, bh);
+    p.bg = c;
+  }catch(e){ p.bg = null; }
+}
+
+async function vidAddFiles(files){
+  const arr = [...files].filter(f => /^image\//.test(f.type || ''));
+  if (!arr.length) return toast('没有可用的图片文件', 'warn');
+  toast(`正在处理 ${arr.length} 张照片…`);
+  let ok = 0;
+  for (const f of arr){
+    try{
+      let bmp;
+      try { bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }); }
+      catch(e){ bmp = await createImageBitmap(f); }
+      const maxSide = 1600;
+      const s = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+      const w = Math.max(1, Math.round(bmp.width * s)), h = Math.max(1, Math.round(bmp.height * s));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close && bmp.close();
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+      const url = URL.createObjectURL(blob);
+      const img = await vidLoadImg(url);
+      const it = { id: uid(), url, img, name: f.name || '' };
+      vidPrepBg(it); VID.photos.push(it); ok++;
+      vidRenderPhotos();
+    }catch(e){ console.warn('照片处理失败', e); }
+  }
+  vidUpdateEst();
+  toast(ok ? `已添加 ${ok} 张照片` : '这些照片读不出来，换几张试试', ok ? 'ok' : 'warn');
+}
+
+function vidRenderPhotos(){
+  const box = $('#vidGrid'); if (!box) return;
+  $('#vidCount').textContent = VID.photos.length + ' 张';
+  $('#vidPhotoEmpty').style.display = VID.photos.length ? 'none' : 'block';
+  box.innerHTML = VID.photos.map((p, i) => `
+    <div class="vid-thumb">
+      <img src="${p.url}" alt="">
+      <span class="vt-no">${i + 1}</span>
+      <button class="vt-x" data-vdel="${i}" title="移除">✕</button>
+      <div class="vt-mv">
+        <button data-vmv="${i}" data-dir="-1" ${i === 0 ? 'disabled style="opacity:.4"' : ''}>←</button>
+        <button data-vmv="${i}" data-dir="1" ${i === VID.photos.length - 1 ? 'disabled style="opacity:.4"' : ''}>→</button>
+      </div>
+    </div>`).join('');
+  $$('#vidGrid [data-vdel]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.vdel;
+    const p = VID.photos[i];
+    if (p && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url);
+    VID.photos.splice(i, 1); vidRenderPhotos(); vidUpdateEst();
+  });
+  $$('#vidGrid [data-vmv]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.vmv, dir = +b.dataset.dir, j = i + dir;
+    if (j < 0 || j >= VID.photos.length) return;
+    const t = VID.photos[i]; VID.photos[i] = VID.photos[j]; VID.photos[j] = t;
+    vidRenderPhotos();
+  });
+}
+
+/* ---------- 音乐 ---------- */
+async function vidPickAudioFile(file){
+  if (!file || !/^audio\//.test(file.type || '')) return toast('请选择一个音频文件', 'warn');
+  if (VID.audioURL) URL.revokeObjectURL(VID.audioURL);
+  VID.audioURL = URL.createObjectURL(file);
+  VID.audioName = file.name; VID.audioDur = 0; VID.decoded = null; VID.finalBuf = null;
+  $('#vidAudioInfo').textContent = `已选择：${file.name}（读取中…）`;
+  $('#vidPlayAudio').disabled = true; $('#vidDelAudio').disabled = false;
+  $('#vidVolRow').style.display = 'flex';
+  try{
+    const ab = await file.arrayBuffer();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ac = new AC();
+    const buf = await ac.decodeAudioData(ab);
+    ac.close && ac.close();
+    VID.decoded = buf; VID.audioDur = buf.duration;
+    $('#vidAudioInfo').textContent = `🎵 ${file.name} · ${buf.duration.toFixed(1)} 秒`;
+    $('#vidPlayAudio').disabled = false;
+  }catch(e){
+    VID.decoded = null;
+    $('#vidAudioInfo').textContent = `⚠️ 这个音频读不出来（${file.name}），换 mp3 / m4a 试试`;
+    toast('音乐解码失败，建议换成 mp3 或 m4a', 'warn');
+  }
+  vidUpdateEst();
+}
+
+function vidPreviewAudio(){
+  if (!VID.audioURL) return;
+  if (VID._ap){ VID._ap.pause(); VID._ap = null; $('#vidPlayAudio').textContent = '▶ 试听'; return; }
+  const a = new Audio(VID.audioURL);
+  a.volume = (+$('#vidVol').value || 75) / 100;
+  a.onended = () => { VID._ap = null; $('#vidPlayAudio').textContent = '▶ 试听'; };
+  a.play().catch(() => toast('无法试听，点生成后听成品吧', 'warn'));
+  VID._ap = a; $('#vidPlayAudio').textContent = '⏸ 停止';
+}
+
+/** 把音乐渲染成「与视频等长、应用音量与淡入淡出」的 AudioBuffer */
+async function vidRenderAudio(S){
+  if (!VID.decoded || !VID.decoded.duration) return null;
+  const sr = 44100;
+  const len = Math.max(1, Math.ceil(S.total * sr));
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const oc = new OAC(2, len, sr);
+  const src = oc.createBufferSource();
+  src.buffer = VID.decoded; src.loop = true;
+  const g = oc.createGain();
+  const vol = (+$('#vidVol').value || 75) / 100;
+  const fadeIn = Math.min(1.2, S.total / 4), fadeOut = Math.min(2, S.total / 4);
+  g.gain.setValueAtTime(0.0001, 0);
+  g.gain.linearRampToValueAtTime(vol, fadeIn);
+  g.gain.setValueAtTime(vol, Math.max(fadeIn, S.total - fadeOut));
+  g.gain.linearRampToValueAtTime(0.0001, S.total);
+  src.connect(g); g.connect(oc.destination);
+  src.start(0);
+  return await oc.startRendering();
+}
+
+/* ---------- 绘制 ---------- */
+function vidDrawPhoto(ctx, p, W, H, fit, zoom){
+  const iw = p.img.naturalWidth || 1, ih = p.img.naturalHeight || 1;
+  if (fit === 'cover'){
+    const s = Math.max(W / iw, H / ih) * zoom;
+    ctx.drawImage(p.img, (W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s);
+    return;
+  }
+  if (p.bg) ctx.drawImage(p.bg, 0, 0, W, H);
+  else { ctx.fillStyle = '#0d1424'; ctx.fillRect(0, 0, W, H); }
+  const s = Math.min(W / iw, H / ih) * 0.9 * zoom;
+  ctx.drawImage(p.img, (W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s);
+}
+
+function vidDrawEnd(ctx, lt, S, W, H){
+  const txt = ($('#vidTitle').value || '').trim();
+  const inA = Math.min(1, lt / 0.7);
+  const outA = lt > S.endDur - 0.7 ? Math.max(0, (S.endDur - lt) / 0.7) : 1;
+  const a = Math.max(0, Math.min(1, Math.min(inA, outA)));
+  ctx.save();
+  ctx.globalAlpha = a;
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#0c1a2b'); g.addColorStop(1, '#243b57');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 74px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(txt, W / 2, H / 2 - 20);
+  ctx.fillStyle = 'rgba(255,255,255,.62)';
+  ctx.font = '400 32px -apple-system,"PingFang SC",sans-serif';
+  ctx.fillText(vidCurTripName(), W / 2, H / 2 + 80);
+  ctx.restore();
+}
+
+function vidDrawFrame(ctx, t, S){
+  const W = VID_W, H = VID_H;
+  const fit = $('#vidFit').value, trans = $('#vidTrans').value, kb = $('#vidKB').checked;
+  ctx.fillStyle = '#06080f'; ctx.fillRect(0, 0, W, H);
+  if (t >= S.seg - 1e-6){ if (S.endDur) vidDrawEnd(ctx, t - S.seg, S, W, H); return; }
+  if (!VID.photos.length) return;
+  const idx = Math.min(VID.photos.length - 1, Math.floor(t / S.per));
+  const lt = t - idx * S.per;
+  const dT = trans === 'none' ? 0 : (trans === 'slide' ? 0.55 : 0.5);
+  const zoom = kb ? 1 + 0.08 * (lt / S.per) : 1;
+  if (dT > 0 && idx + 1 < VID.photos.length && lt > S.per - dT){
+    const k = Math.min(1, (lt - (S.per - dT)) / dT);
+    ctx.save(); vidDrawPhoto(ctx, VID.photos[idx], W, H, fit, zoom); ctx.restore();
+    ctx.save();
+    if (trans === 'slide') ctx.translate((1 - k) * W, 0);
+    else ctx.globalAlpha = k;
+    vidDrawPhoto(ctx, VID.photos[idx + 1], W, H, fit, 1);
+    ctx.restore();
+    return;
+  }
+  vidDrawPhoto(ctx, VID.photos[idx], W, H, fit, zoom);
+}
+
+/* ---------- 进度 ---------- */
+function vidProg(p, txt){
+  const bar = $('#vidBar'), t = $('#vidProgTxt');
+  if (bar) bar.style.width = Math.max(0, Math.min(100, p * 100)).toFixed(1) + '%';
+  if (t) t.textContent = txt || (Math.round(p * 100) + '%');
+}
+
+/* ---------- 路径①：WebCodecs 极速编码 ---------- */
+async function vidMakeFast(S, canvas, ctx){
+  // 拉 mp4-muxer（CDN，最多等 10 秒；拉不到就直接回退实时录制）
+  const mod = await Promise.race([
+    import('https://esm.run/mp4-muxer'),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('muxer 加载超时')), 10000))
+  ]);
+  const Muxer = mod.Muxer || (mod.default && mod.default.Muxer);
+  const ArrayBufferTarget = mod.ArrayBufferTarget || (mod.default && mod.default.ArrayBufferTarget);
+  if (!Muxer || !ArrayBufferTarget) throw new Error('muxer 加载失败');
+  if (typeof VideoEncoder === 'undefined') throw new Error('无 VideoEncoder');
+
+  const hasAudio = !!VID.finalBuf;
+  if (hasAudio && typeof AudioEncoder === 'undefined') throw new Error('无 AudioEncoder');
+
+  const mux = new Muxer({
+    target: new ArrayBufferTarget(),
+    video: { codec: 'avc', width: VID_W, height: VID_H },
+    audio: hasAudio ? { codec: 'aac', numberOfChannels: 2, sampleRate: VID.finalBuf.sampleRate } : undefined,
+    fastStart: 'in-memory'
+  });
+
+  /* --- 音频 --- */
+  if (hasAudio){
+    const cfg = { codec: 'mp4a.40.2', sampleRate: VID.finalBuf.sampleRate, numberOfChannels: 2, bitrate: 160000 };
+    const sup = await AudioEncoder.isConfigSupported(cfg);
+    if (!sup.supported) throw new Error('AAC 编码不支持');
+    const aenc = new AudioEncoder({
+      output: (chunk, meta) => mux.addAudioChunk(chunk, meta),
+      error: e => { throw e; }
+    });
+    aenc.configure(cfg);
+    const sr = VID.finalBuf.sampleRate, CH = 1024;
+    const chans = Math.min(2, VID.finalBuf.numberOfChannels);
+    const datas = [];
+    for (let c = 0; c < chans; c++) datas.push(VID.finalBuf.getChannelData(c));
+    for (let i = 0; i < VID.finalBuf.length; i += CH){
+      const len = Math.min(CH, VID.finalBuf.length - i);
+      const arr = new Float32Array(len * 2);
+      for (let c = 0; c < 2; c++) arr.set(datas[Math.min(c, chans - 1)].subarray(i, i + len), c * len);
+      aenc.encode(new AudioData({
+        format: 'f32-planar', sampleRate: sr, numberOfFrames: len, numberOfChannels: 2,
+        timestamp: Math.round((i / sr) * 1e6), data: arr
+      }));
+      if (i % (CH * 200) === 0) await new Promise(r => setTimeout(r, 0));
+    }
+    await aenc.flush();
+    aenc.close && aenc.close();
+  }
+
+  /* --- 视频 --- */
+  const vcfg = {
+    codec: 'avc1.42001f', width: VID_W, height: VID_H,
+    bitrate: 8_000_000, framerate: VID_FPS, latencyMode: 'quality'
+  };
+  const vsup = await VideoEncoder.isConfigSupported(vcfg);
+  if (!vsup.supported) throw new Error('H.264 编码不支持');
+  const venc = new VideoEncoder({
+    output: (chunk, meta) => mux.addVideoChunk(chunk, meta),
+    error: e => { throw e; }
+  });
+  venc.configure(vcfg);
+
+  const frames = Math.max(1, Math.round(S.total * VID_FPS));
+  for (let i = 0; i < frames; i++){
+    const t = i / VID_FPS;
+    vidDrawFrame(ctx, Math.min(t, S.total - 1e-4), S);
+    const vf = new VideoFrame(canvas, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / VID_FPS) });
+    venc.encode(vf, { keyFrame: i % (VID_FPS * 2) === 0 });
+    vf.close();
+    if (venc.encodeQueueSize > 6){
+      await new Promise(r => setTimeout(r, 4));
+      while (venc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 8));
+    }
+    if (i % 6 === 0){ vidProg(i / frames, `编码中 ${Math.round(i / frames * 100)}%`); await new Promise(r => setTimeout(r, 0)); }
+  }
+  await venc.flush();
+  venc.close && venc.close();
+  mux.finalize();
+  return new Blob([mux.target.buffer], { type: 'video/mp4' });
+}
+
+/** 成品自检：能读元数据、且时长跟预期差不多才算通过（防止极速模式产出废片） */
+function vidVerify(blob, S){
+  return new Promise(res => {
+    try{
+      const v = document.createElement('video');
+      v.preload = 'metadata'; v.muted = true;
+      const url = URL.createObjectURL(blob);
+      let done = false;
+      const fin = ok => { if (done) return; done = true; try{ URL.revokeObjectURL(url); }catch(e){} res(ok); };
+      v.onloadedmetadata = () => {
+        const d = v.duration;
+        fin(isFinite(d) && d > 0.2 && Math.abs(d - S.total) < Math.max(2, S.total * 0.3));
+      };
+      v.onerror = () => fin(false);
+      setTimeout(() => fin(false), 8000);
+      v.src = url;
+    }catch(e){ res(false); }
+  });
+}
+
+/* ---------- 路径②：MediaRecorder 实时录制 ---------- */
+function vidPickMime(){
+  const list = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1.42E01E',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  for (const m of list){ try { if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m; } catch(e){} }
+  return '';
+}
+
+async function vidMakeRealtime(S, canvas, ctx){
+  if (typeof MediaRecorder === 'undefined') throw new Error('浏览器不支持录制');
+  const mime = vidPickMime();
+  const stream = canvas.captureStream(VID_FPS);
+  let ac = null, srcNode = null;
+  if (VID.finalBuf){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ac = new AC();
+      if (ac.state === 'suspended') await ac.resume();
+      const dest = ac.createMediaStreamDestination();
+      srcNode = ac.createBufferSource(); srcNode.buffer = VID.finalBuf;
+      srcNode.connect(dest);
+      dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+      srcNode.start();
+    }catch(e){ console.warn('音轨加入失败', e); ac = null; }
+  }
+  const rec = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: 8_000_000 }, mime ? { mimeType: mime } : {}));
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(res => { rec.onstop = res; });
+  rec.start(200);
+  const t0 = performance.now();
+  await new Promise(res => {
+    let last = performance.now();
+    (function loop(){
+      const now = performance.now();
+      if (now - last > 900) VID.stall = true;   // 页面被挂起过
+      last = now;
+      const el = (now - t0) / 1000;
+      const t = Math.min(el, S.total);
+      vidDrawFrame(ctx, t, S);
+      vidProg(t / S.total, `渲染中 ${t.toFixed(1)} / ${S.total.toFixed(1)} 秒（请勿切到后台）`);
+      if (el >= S.total) return res();
+      requestAnimationFrame(loop);
+    })();
+  });
+  rec.stop();
+  await stopped;
+  try{ srcNode && srcNode.stop(); }catch(e){}
+  try{ ac && ac.close(); }catch(e){}
+  stream.getTracks().forEach(tr => tr.stop());
+  if (!chunks.length) throw new Error('没有录到数据');
+  return new Blob(chunks, { type: mime || 'video/webm' });
+}
+
+/* ---------- 生成主流程 ---------- */
+async function vidGenerate(){
+  if (VID.busy) return;
+  if (!VID.photos.length) return toast('先添加几张照片吧', 'warn');
+  const S = vidSeg();
+  if (VID.photos.length > 60) return toast('照片太多了（>60），分两次做吧', 'warn');
+
+  VID.busy = true; VID.stall = false;
+  const onHide = () => { if (document.hidden) VID.stall = true; };
+  document.addEventListener('visibilitychange', onHide);
+  $('#vidGo').disabled = true;
+  $('#vidProgSec').style.display = 'block';
+  $('#vidOutSec').style.display = 'none';
+  $('#vidProgTitle').textContent = '正在准备…';
+  vidProg(0.02, '准备素材');
+
+  const canvas = document.createElement('canvas');
+  canvas.width = VID_W; canvas.height = VID_H;
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  try{
+    VID.finalBuf = await vidRenderAudio(S);
+    const wantFast = $('#vidFast').checked;
+    let blob = null, mode = '';
+    if (wantFast){
+      try{
+        $('#vidProgTitle').textContent = '⚡ 极速编码中…';
+        const b = await vidMakeFast(S, canvas, ctx);
+        $('#vidProgTitle').textContent = '校验成品…';
+        if (await vidVerify(b, S)){ blob = b; mode = '⚡ 极速模式'; }
+        else throw new Error('极速成品校验不通过');
+      }catch(e){
+        console.warn('极速模式失败，回退实时录制：', e);
+        $('#vidProgTitle').textContent = '实时录制中…';
+        blob = await vidMakeRealtime(S, canvas, ctx);
+        mode = '实时录制（极速不可用）';
+      }
+    }else{
+      $('#vidProgTitle').textContent = '实时录制中…';
+      blob = await vidMakeRealtime(S, canvas, ctx);
+      mode = '实时录制';
+    }
+    vidProg(1, '完成！');
+    VID.blob = blob;
+    VID.ext = (blob.type.indexOf('webm') >= 0) ? 'webm' : 'mp4';
+    if (VID.blobUrl) URL.revokeObjectURL(VID.blobUrl);
+    VID.blobUrl = URL.createObjectURL(blob);
+    $('#vidMode').textContent = mode;
+    $('#vidOutSec').style.display = 'block';
+    const pv = $('#vidPreview');
+    pv.src = VID.blobUrl; pv.load();
+    $('#vidOutInfo').innerHTML =
+      `${mode} · ${S.total.toFixed(1)} 秒 · ${VID_W}×${VID_H} · ${(blob.size / 1048576).toFixed(1)} MB · ${VID.ext.toUpperCase()}` +
+      (VID.stall ? '<br><span style="color:#b45309">⚠️ 生成过程中页面被切到后台，画面可能有跳帧；建议重新生成一次。</span>' : '');
+    setTimeout(() => $('#vidOutSec').scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+    toast('视频生成好了 🎬');
+  }catch(e){
+    console.error(e);
+    $('#vidProgTitle').textContent = '生成失败';
+    vidProg(0, '失败');
+    toast('生成失败：' + (e && e.message ? e.message : '未知错误'), 'warn', 3600);
+  }finally{
+    document.removeEventListener('visibilitychange', onHide);
+    VID.busy = false;
+    $('#vidGo').disabled = false;
+  }
+}
+
+function vidSave(){
+  if (!VID.blob) return;
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const a = document.createElement('a');
+  a.href = VID.blobUrl;
+  a.download = `旅行视频_${(vidCurTripName() || 'trip').replace(/[\\/:*?"<>|]/g, '_')}_${stamp}.${VID.ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function vidShare(){
+  if (!VID.blob) return;
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const name = `旅行视频_${stamp}.${VID.ext}`;
+  try{
+    const file = new File([VID.blob], name, { type: VID.blob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: '旅行视频' });
+      return;
+    }
+    if (navigator.share){ await navigator.share({ title: '旅行视频', text: '我用旅行规划器剪的照片视频 🎬' }); return; }
+    toast('浏览器不支持分享，请用「保存视频」', 'warn');
+  }catch(e){ /* 用户取消分享 */ }
+}
+
+/* ---------- 事件绑定 ---------- */
+function bindVideoMaker(){
+  const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+  on('#vidClose', 'click', closeVideoMaker);
+  on('#vidCancel', 'click', closeVideoMaker);
+  on('#vidGo', 'click', vidGenerate);
+  on('#vidAddPhoto', 'click', () => $('#vidPhotoInput').click());
+  on('#vidPhotoInput', 'change', e => { vidAddFiles(e.target.files); e.target.value = ''; });
+  on('#vidClearPhoto', 'click', () => {
+    if (!VID.photos.length) return;
+    confirmBox('清空已添加的 ' + VID.photos.length + ' 张照片？', () => {
+      VID.photos.forEach(p => { if (p.url.startsWith('blob:')) URL.revokeObjectURL(p.url); });
+      VID.photos = []; vidRenderPhotos(); vidUpdateEst();
+    }, '清空');
+  });
+  on('#vidFromJournal', 'click', () => {
+    const list = (DB && DB.journals ? DB.journals : []).filter(j => j.photos && j.photos.length);
+    if (!list.length) return toast('手账里还没有照片', 'warn');
+    if (list.length === 1) return vidTakeFromJournal(list[0]);
+    // 多本手账：渲染成一行小按钮供选择
+    const row = document.createElement('div');
+    row.className = 'vid-row';
+    row.innerHTML = '<span class="vid-lab">选择手账：</span>' + list.map(j =>
+      `<button class="btn small ghost" data-vj="${j.id}">${esc(j.title)}（${j.photos.length}）</button>`).join('');
+    $('#vidFromJournal').parentElement.appendChild(row);
+    $$('[data-vj]', row).forEach(b => b.onclick = () => {
+      row.remove();
+      vidTakeFromJournal(DB.journals.find(x => x.id === b.dataset.vj));
+    });
+  });
+  on('#vidPickAudio', 'click', () => $('#vidAudioInput').click());
+  on('#vidAudioInput', 'change', e => { vidPickAudioFile(e.target.files[0]); e.target.value = ''; });
+  on('#vidPlayAudio', 'click', vidPreviewAudio);
+  on('#vidDelAudio', 'click', () => {
+    if (VID.audioURL) URL.revokeObjectURL(VID.audioURL);
+    VID.audioURL = ''; VID.audioName = ''; VID.audioDur = 0; VID.decoded = null; VID.finalBuf = null;
+    if (VID._ap){ VID._ap.pause(); VID._ap = null; }
+    $('#vidAudioInfo').textContent = '未选择音乐 · 生成的视频将没有声音';
+    $('#vidPlayAudio').disabled = true; $('#vidDelAudio').disabled = true;
+    $('#vidPlayAudio').textContent = '▶ 试听';
+    $('#vidVolRow').style.display = 'none';
+    vidUpdateEst();
+  });
+  on('#vidVol', 'input', () => { $('#vidVolTxt').textContent = $('#vidVol').value + '%'; });
+  ['#vidPer', '#vidTrans', '#vidFit', '#vidKB', '#vidFast'].forEach(id => on(id, 'change', vidUpdateEst));
+  on('#vidTitle', 'input', vidUpdateEst);
+  on('#vidDownload', 'click', vidSave);
+  on('#vidShare', 'click', vidShare);
+  on('#vidAgain', 'click', () => { $('#vidOutSec').style.display = 'none'; $('#vidProgSec').style.display = 'none'; vidGenerate(); });
+}
+
+async function vidTakeFromJournal(j){
+  if (!j) return;
+  let n = 0;
+  for (const p of j.photos){
+    if (!p.img) continue;
+    try{
+      const img = await vidLoadImg(p.img);
+      const it = { id: uid(), url: p.img, img, name: p.caption || '' };
+      vidPrepBg(it); VID.photos.push(it); n++;
+      vidRenderPhotos();
+    }catch(e){}
+  }
+  vidUpdateEst();
+  toast(n ? `已带入 ${n} 张照片` : '这本手账没有可用照片', n ? 'ok' : 'warn');
+}
+
 function renderJournals(){
   const list = [...DB.journals].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const totalPhotos = list.reduce((s, j) => s + j.photos.length, 0);
@@ -4271,6 +5058,7 @@ function renderJournals(){
           <button class="btn small primary" data-open="${j.id}">📖 查看</button>
           <button class="btn small ghost" data-editj="${j.id}">✏️ 编辑</button>
           <button class="btn small ghost" data-exportj="${j.id}">🖼 导出长图</button>
+          <button class="btn small ghost" data-videoj="${j.id}">🎬 视频</button>
           <div style="flex:1"></div>
           <button class="btn small danger" data-delj="${j.id}">🗑</button>
         </div>
@@ -4284,6 +5072,8 @@ function renderJournals(){
     journalForm(DB.journals.find(x => x.id === b.dataset.editj)));
   $$('#journalList [data-exportj]').forEach(b => b.onclick = () =>
     exportJournalImage(DB.journals.find(x => x.id === b.dataset.exportj)));
+  $$('#journalList [data-videoj]').forEach(b => b.onclick = () =>
+    openVideoMaker(DB.journals.find(x => x.id === b.dataset.videoj)));
   $$('#journalList [data-delj]').forEach(b => b.onclick = () => {
     const j = DB.journals.find(x => x.id === b.dataset.delj);
     if (!j) return;
@@ -8432,6 +9222,7 @@ function bindGlobal(){
   // --- 旅行手账 ---
   $('#btnAddJournal').onclick = () => journalForm(null);
   $('#btnAutoJournal2').onclick = autoCreateJournals;
+  $('#btnVideoMaker').onclick = () => openVideoMaker(null);
 
   // --- 记账 ---
   $('#btnAddExpense').onclick = () => expenseForm(null);
@@ -8586,6 +9377,7 @@ function bindGlobal(){
   load();
   initMap();
   bindGlobal();
+  bindVideoMaker();
   // 若有当前档案，先渲染其内容（DB 就绪）；否则保持 DB=null，由首页空态引导新建
   if (TRIPS.length && activeTripId && DB){ openTrip(activeTripId); }
   syncResponsiveView();     // 手机端初始只显示「行程」Tab 对应的模块

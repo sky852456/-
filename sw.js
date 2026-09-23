@@ -14,7 +14,7 @@
      · 换版本务必改 VERSION，否则老缓存不会失效（activate 里会清理非当前版本）。
    ============================================================================ */
 
-const VERSION = 'v1.6.3';
+const VERSION = 'v1.7.0';
 const SHELL_CACHE = `tp-shell-${VERSION}`;
 const CDN_CACHE   = `tp-cdn-${VERSION}`;
 const IMG_CACHE   = `tp-img-${VERSION}`;
@@ -37,11 +37,14 @@ const SHELL_ASSETS = [
   './icons/apple-touch-icon.png'
 ];
 
-/* 需要离线可用的 CDN 资源（首次联网访问时被缓存，之后断网也能用） */
+/* 需要离线可用的 CDN 资源（首次联网访问时被缓存，之后断网也能用）
+   esm.run：照片视频「极速模式」的 mp4-muxer 封装库（约 30KB） */
 const CDN_HOSTS = [
   'unpkg.com',
   'cdn.jsdelivr.net',
-  'cdnjs.cloudflare.com'
+  'cdnjs.cloudflare.com',
+  'esm.run',
+  'esm.sh'
 ];
 
 /* 永远不缓存的实时接口 / 大文件
