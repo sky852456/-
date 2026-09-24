@@ -99,6 +99,7 @@
   var mockFn = null;       // 测试用：返回假回复，绕过 WebGPU + 下载
   var pending = null;      // 待采纳的动作上下文 { act, targetId }
   var lastText = '';       // 最近一次生成结果
+  var lastChatQ = '';      // 最近一次自由提问（供重试）
   var cfg = null;          // 云端配置 { mode, provider, key, model, base }
 
   /* ----------------------------- 工具 ----------------------------- */
@@ -131,7 +132,7 @@
 
   /* ------------------------- 云端配置读写 ------------------------- */
   function defaultCfg() {
-    return { mode: 'api', provider: 'deepseek', key: '', model: '', base: '' };
+    return { mode: 'api', provider: 'deepseek', key: '', model: '', base: '', webSearch: false };
   }
   function loadCfg() {
     if (cfg) return cfg;
@@ -146,6 +147,7 @@
           if (typeof o.key === 'string') cfg.key = o.key;
           if (typeof o.model === 'string') cfg.model = o.model;
           if (typeof o.base === 'string') cfg.base = o.base;
+          if (typeof o.webSearch === 'boolean') cfg.webSearch = o.webSearch;
         }
       }
     } catch (e) { /* 配置损坏则用默认值 */ }
@@ -316,14 +318,30 @@
     return '接口错误（' + status + '）' + (detail ? '：' + detail : '');
   }
 
+  /** 哪些服务商支持联网搜索（web_search 工具 / enable_search） */
+  function searchSupport() {
+    return { zhipu: 'tool', moonshot: 'tool', dashscope: 'param', siliconflow: 'tool', deepseek: '', openai: '' };
+  }
+  function buildSearch(system, user) {
+    var kind = (searchSupport()[cfg.provider] || '');
+    if (!kind || !cfg.webSearch) return null;
+    if (kind === 'param') {
+      // 通义千问：顶层 enable_search
+      return { param: true };
+    }
+    // 智谱 / Kimi / SiliconFlow：web_search 工具
+    return { tools: [{ type: 'web_search', web_search: { search_query: user, search_result_type: 'search_and_render' } }] };
+  }
+
   /** 流式调用云端接口；不支持流式时自动降级为一次性返回 */
-  async function generateCloud(system, user, onToken) {
+  async function generateCloud(system, user, onToken, allowSearch) {
     if (!apiReady()) {
       var ps = providerOf();
       setStatus('还没填 API Key。请在「云端接口」里填入 ' + ps.name + ' 的 Key' + (ps.keyUrl ? '（点下方链接可申请）' : ''), 'err');
       throw new Error('NO_API_KEY');
     }
     var url = apiBase() + '/chat/completions';
+    var search = allowSearch ? buildSearch(system, user) : null;
     var body = {
       model: apiModel(),
       messages: [
@@ -331,9 +349,13 @@
         { role: 'user', content: user }
       ],
       temperature: 0.7,
-      max_tokens: 600,
+      max_tokens: search ? 900 : 600,
       stream: true
     };
+    if (search) {
+      if (search.param) body.enable_search = true;       // 通义
+      if (search.tools) body.tools = search.tools;        // 智谱 / Kimi / SiliconFlow
+    }
 
     var resp;
     try {
@@ -405,8 +427,8 @@
     }
   }
 
-  async function generate(system, user, onToken) {
-    if (cfg.mode === 'api') return generateCloud(system, user, onToken);
+  async function generate(system, user, onToken, allowSearch) {
+    if (cfg.mode === 'api') return generateCloud(system, user, onToken, allowSearch);
 
     // 本地模式
     var eng = await getEngine();
@@ -510,6 +532,88 @@
     return null;
   }
 
+  /* --------------------------- 行程背景（喂给 AI 让它变「聪明」） --------------------------- */
+  function tripContext() {
+    if (!DB) return '（还没有行程数据）';
+    var trip = (TRIPS || []).find(function (t) { return t.id === activeTripId; }) || null;
+    var name = trip ? ((trip.emoji || '') + ' ' + trip.name).trim() : '旅行';
+    var days = DB.days || [];
+    var cities = [];
+    days.forEach(function (d) {
+      var c = (d.stay || '').trim();
+      if (c && cities.indexOf(c) < 0) cities.push(c);
+    });
+    var lines = [];
+    lines.push('旅行名称：' + name);
+    lines.push('总天数：' + days.length + ' 天；城市/留宿顺序：' + (cities.join(' → ') || '未填'));
+    if (days[0] && days[0].date) lines.push('日期范围：' + days[0].date + ' ~ ' + days[days.length - 1].date);
+    var ad = activeDay();
+    if (ad) {
+      var wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(ad.date + 'T00:00:00').getDay()];
+      var stops = (ad.stops || []).map(function (s) {
+        return s.name + (s.note ? '（' + s.note + '）' : '');
+      }).join('、');
+      lines.push('—— 当前所在天 ——');
+      lines.push('日期：' + ad.date + ' ' + wd + '；留宿：' + (ad.stay || '未填') + '；当天景点：' + (stops || '无'));
+    }
+    var all = [];
+    days.forEach(function (d) { (d.stops || []).forEach(function (s) { if (s.name) all.push(s.name); }); });
+    if (all.length) lines.push('全程景点：' + all.join('、').slice(0, 220));
+    return lines.join('\n');
+  }
+
+  var CHAT_SYSTEM = '你是一个贴心的中国旅行 AI 助手，正在陪用户走一趟具体行程。' +
+    '请基于下面提供的「当前行程背景」来回答，而不是泛泛而谈：\n' +
+    '· 提到具体城市/景点时用真实地理与常识（高原地区注意高反与保暖、西北注意防晒防风沙、民族地区注意习俗与禁忌）；\n' +
+    '· 推荐餐厅时给本地人常去、口碑稳的类型，并标注大致价位与菜系；不要编造你并不确定的具体店名；\n' +
+    '· 给建议要可操作、分点、口语化，不要使用 Markdown 标题；\n' +
+    '· 如果用户的问题超出了行程背景，也可以结合常识正常回答。\n回答用简体中文。';
+
+  /* 自由提问（含快捷 chips） */
+  function runChat(text) {
+    text = (text || '').trim();
+    if (!text) { setStatus('先输入想问的吧', 'err'); return; }
+    if (cfg.mode === 'api' && !apiReady()) {
+      var ps = providerOf();
+      $('aiCfgApi').classList.add('show'); $('aiCfgLocal').classList.remove('show');
+      setStatus('请先填入 ' + ps.name + ' 的 API Key 才能联网问答', 'err');
+      var ki = $('aiKey'); if (ki) ki.focus();
+      return;
+    }
+    pending = { act: 'chat' };
+    lastChatQ = text;
+    $('aiOut').style.display = 'none';
+    var adoptBtn = $('aiAdopt'); if (adoptBtn) adoptBtn.style.display = 'none';   // 闲聊结果不「采纳写入」
+    setStatus(cfg.mode === 'api' ? (cfg.webSearch && searchSupport()[cfg.provider] ? '正在联网搜索并思考…' : '正在思考…') : '本地模型思考中…');
+    setProgress(1);
+    var sys = CHAT_SYSTEM + '\n\n# 当前行程背景\n' + tripContext();
+    generate(sys, text, function (p) { showOut(p); }, true)
+      .then(function (full) {
+        lastText = (full || '').trim();
+        showOut(lastText);
+        setStatus('已回答，可复制', 'ok');
+        setProgress(1);
+      })
+      .catch(function (e) {
+        var msg = e && e.message ? e.message : String(e);
+        if (msg === 'NO_API_KEY' || msg === 'LOADING') return;
+        setStatus('生成失败：' + msg, 'err');
+      });
+  }
+
+  /* 快捷 chips 预设问题 */
+  function chipQuestion(kind) {
+    var ad = activeDay();
+    var city = (ad && ad.stay) ? ad.stay : '当前城市';
+    var date = ad ? ad.date : '今天';
+    var spots = ad && ad.stops && ad.stops.length ? ad.stops.map(function (s) { return s.name; }).join('、') : '暂无';
+    if (kind === 'eat') return '我现在在「' + city + '」（' + date + '，今天计划去：' + spots + '）。推荐 4-5 家适合游客、本地人常去、不太容易踩雷的餐厅/小吃，按菜系分开说，给大概人均价位和必点，别编造你没把握的具体店名。';
+    if (kind === 'play') return '我今天在「' + city + '」，计划去：' + spots + '。帮我排一个最顺路、不赶的玩法顺序，几点到哪、各玩多久、中间吃什么，给我一个省心方案。';
+    if (kind === 'tips') return '这趟在「' + city + '」及周边（' + spots + '），请告诉我最实用的注意事项：高原反应/防晒/保暖/防风沙/民族地区习俗/防坑/安全，分点说。';
+    if (kind === 'pack') return '我要去「' + city + '」及周边（' + spots + '），请根据当地气候和玩法，给我一份行李清单：衣服、防晒保暖、证件、药品、拍照装备，分必带和选带。';
+    return '';
+  }
+
   /* --------------------------- 动作分发 --------------------------- */
   function runAction(act, target) {
     // 记住本次「动作 + 目标」，供 adopt() 精确写回
@@ -529,9 +633,10 @@
     }
 
     $('aiOut').style.display = 'none';
+    var adoptBtn = $('aiAdopt'); if (adoptBtn) adoptBtn.style.display = '';
     setStatus(cfg.mode === 'api' ? '正在生成…' : '正在生成…（首次需先加载模型）');
     setProgress(1);
-    generate(p.system, p.user, function (partial) { showOut(partial); })
+    generate(p.system, p.user, function (partial) { showOut(partial); }, true)
       .then(function (full) {
         lastText = (full || '').trim();
         showOut(lastText);
@@ -729,6 +834,11 @@
       cfg.base = '';
       var mi = $('aiModel'); if (mi) mi.value = '';
       var bi = $('aiBase'); if (bi) bi.value = '';
+      // 切到不支持联网搜索的服务商 → 顺手关掉开关，避免「勾着却不生效」
+      if (cfg.webSearch && !searchSupport()[cfg.provider]) {
+        cfg.webSearch = false;
+        var wsx = $('aiWebSearch'); if (wsx) wsx.checked = false;
+      }
       saveCfg();
       updateHint($('aiKeyHint'));
       setStatus('已切换到 ' + providerOf().name + '，请确认 Key 是否正确');
@@ -755,9 +865,43 @@
     };
     var retry = $('aiRetry'); if (retry) retry.onclick = function () {
       if (!pending) return;
+      if (pending.act === 'chat') { runChat(lastChatQ); return; }
       if (pending.act === 'day') runAction('day');
       else runAction(pending.act, $('aiTargetSel').value);
     };
+
+    // 自由提问：发送按钮 + 回车发送
+    var chatIn = $('aiChatInput'), chatSend = $('aiChatSend');
+    if (chatSend) chatSend.onclick = function () { runChat(chatIn && chatIn.value); };
+    if (chatIn) {
+      chatIn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runChat(chatIn.value); }
+      });
+    }
+    // 快捷 chips
+    var chips = document.querySelectorAll('#aiChips .ai-chip');
+    Array.prototype.forEach.call(chips, function (b) {
+      b.onclick = function () {
+        var q = chipQuestion(b.dataset.q);
+        if (chatIn) chatIn.value = q;
+        runChat(q);
+      };
+    });
+    // 联网搜索开关
+    var ws = $('aiWebSearch');
+    if (ws) {
+      ws.checked = !!cfg.webSearch;
+      ws.onchange = function () {
+        cfg.webSearch = !!ws.checked; saveCfg();
+        var sup = searchSupport()[cfg.provider];
+        if (cfg.webSearch && !sup) {
+          setStatus('当前服务商（' + providerOf().name + '）暂不支持联网搜索，已忽略；可换「智谱/通义/Kimi」', 'warn');
+          cfg.webSearch = false; ws.checked = false; saveCfg();
+        } else if (cfg.webSearch) {
+          setStatus('已开启联网搜索（用 ' + providerOf().name + ' 实时查最新信息，需联网）', 'ok');
+        }
+      };
+    }
     // Esc 关闭
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
 
@@ -770,6 +914,8 @@
     open: openModal,
     close: closeModal,
     run: runAction,
+    chat: runChat,
+    chip: chipQuestion,
     adopt: adopt,
     getEngine: getEngine,
     status: function () {

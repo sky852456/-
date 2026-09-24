@@ -530,6 +530,21 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
   background:var(--brand);border-radius:6px;padding:2px 8px;margin-bottom:5px;
 }
 .ov-trip-no{font-size:12px;color:var(--text-mute);}
+.ov-trip-date{font-size:11.5px;color:var(--brand);font-weight:700;margin-top:3px;white-space:nowrap;}
+
+/* --- 总览 · 全程天气汇总 --- */
+.ov-wxrow{
+  display:flex;align-items:center;gap:10px;padding:11px 17px;
+  border-bottom:1px solid var(--line);font-size:13.5px;
+}
+.ov-wxrow:last-child{border-bottom:none;}
+.ov-wxd{flex:none;width:96px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+.ov-wxp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);}
+.ov-wxv{flex:none;display:flex;align-items:center;gap:6px;font-weight:700;color:var(--text);}
+.ov-wxico{font-size:17px;}
+.ov-wxlb{color:var(--text-dim);font-weight:600;}
+.ov-wxt{font-variant-numeric:tabular-nums;color:var(--text);}
+.ov-wxmiss{color:var(--text-mute);font-size:12px;font-weight:500;}
 .ov-trip-mid{flex:1;min-width:0;display:flex;align-items:center;gap:11px;}
 .ov-time{font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
 .ov-time small{display:block;font-size:11.5px;font-weight:500;color:var(--text-mute);margin-top:2px;}
@@ -1296,6 +1311,21 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 .ai-out-btns{display:flex;gap:8px;padding:0 12px 12px;}
 .ai-out-btns button{padding:8px 15px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--text);}
 #aiAdopt{background:#1a9c6e!important;border-color:#1a9c6e!important;color:#fff!important;}
+/* 自由提问 + 快捷 chips */
+.ai-ws{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-mute);margin-top:11px;cursor:pointer;font-weight:600;}
+.ai-ws input{width:15px;height:15px;accent-color:#7c5cff;}
+.ai-chat{margin-top:14px;border-top:1px dashed var(--line);padding-top:13px;}
+.ai-chat .ai-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px;}
+.ai-chip{font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--text);cursor:pointer;transition:.16s;font-family:inherit;}
+.ai-chip:hover{border-color:#7c5cff;background:#f6f4ff;color:#6a4bff;}
+.ai-chat-in{width:100%;min-height:64px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:11px;
+  background:var(--panel-2);color:var(--text);font-size:13.5px;line-height:1.6;font-family:inherit;box-sizing:border-box;}
+.ai-chat-row{display:flex;align-items:center;gap:10px;margin-top:9px;}
+.ai-send{background:linear-gradient(135deg,#7c5cff,#2bb8c4);color:#fff;border:none;padding:10px 20px;
+  border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+.ai-send:active{transform:scale(.97);}
+.ai-chat-hint{font-size:11.5px;color:var(--text-mute);}
 
 /* ==========================================================================
    8. 照片视频生成器
@@ -1627,6 +1657,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
         <input id="aiBase" type="text" placeholder="" autocomplete="off" spellcheck="false">
         <button class="ai-testbtn" id="aiTest">🔌 测试连接</button>
         <div class="ai-hint" id="aiKeyHint"></div>
+        <label class="ai-ws"><input type="checkbox" id="aiWebSearch"> 🌐 联网搜索（用智谱/通义/Kimi 实时查最新信息，需联网）</label>
       </div>
 
       <!-- ===== 本地模型说明 ===== -->
@@ -1646,6 +1677,20 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
         <button class="ai-act" data-act="hotel"><span class="ic">🏨</span>补酒店信息</button>
         <button class="ai-act" data-act="ticket"><span class="ic">🚄</span>写出行提醒</button>
         <button class="ai-act" data-act="journal"><span class="ic">📔</span>手账配图文案</button>
+      </div>
+
+      <div class="ai-chat" id="aiChatSec">
+        <div class="ai-chips" id="aiChips">
+          <button class="ai-chip" data-q="eat">🍜 附近吃什么</button>
+          <button class="ai-chip" data-q="play">📍 今天怎么玩</button>
+          <button class="ai-chip" data-q="tips">⚠️ 注意事项</button>
+          <button class="ai-chip" data-q="pack">🧳 带什么</button>
+        </div>
+        <textarea id="aiChatInput" class="ai-chat-in" placeholder="随便问，比如：兰州今晚吃啥？茶卡盐湖拍照穿什么？这趟高原反应要注意啥？"></textarea>
+        <div class="ai-chat-row">
+          <button id="aiChatSend" class="ai-send">➤ 问问 AI</button>
+          <span class="ai-chat-hint" id="aiChatHint"></span>
+        </div>
       </div>
 
       <div id="aiTarget" style="display:none">
@@ -2500,9 +2545,34 @@ const WMO = {
 function wmoMap(c){ return WMO[c] || ['🌡️','未知']; }
 function mdShort(dt){ const p = String(dt).split('-'); return (p[1]||'?') + '/' + (p[2]||'?'); }
 function addDaysStr(dateStr, n){
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  // 注意：不能用 new Date(str+'T00:00:00').toISOString() —— 在 UTC+8 时区会倒退一天！
+  const p = String(dateStr).split('-').map(Number);
+  const d = new Date(p[0], (p[1] || 1) - 1, (p[2] || 1) + n);   // 本地日期运算
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function wxTodayStr(){
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+}
+/** 修复「经纬度写反」的存量数据（lat>90 且 lng<=90 → 交换），景点与酒店都查 */
+function fixCoordSwap(db){
+  if (!db) return 0;
+  let n = 0;
+  const fix = o => {
+    if (o && typeof o.lat === 'number' && typeof o.lng === 'number' &&
+        Math.abs(o.lat) > 90 && Math.abs(o.lng) <= 90){
+      const t = o.lat; o.lat = o.lng; o.lng = t; n++;
+    }
+  };
+  (db.days || []).forEach(d => (d.stops || []).forEach(fix));
+  (db.hotels || []).forEach(fix);
+  return n;
+}
+/** Open-Meteo 预报窗口：允许查询 [今天-90天, 今天+15天]，窗口外会 HTTP 400 */
+function wxClampRange(start, end){
+  const lo = addDaysStr(wxTodayStr(), -90), hi = addDaysStr(wxTodayStr(), 15);
+  return { start: start < lo ? lo : start, end: end > hi ? hi : end, hi,
+           out: start > hi || end < lo };   // out=true 表示整段都在窗口外
 }
 function wxRainCodes(){ return [51,53,55,56,57,61,63,65,66,67,71,73,75,77,80,81,82,85,86]; }
 /** 根据天气码/温度/降水/海拔生成出行提示（高海拔用 Open-Meteo 返回的 elevation 判断） */
@@ -2525,6 +2595,14 @@ function weatherCoord(d){
   return null;
 }
 async function fetchWeather(lat, lng, start, end){
+  // 坐标容错：经纬度写反（lat>90）时自动交换；仍无效则报错
+  if (Math.abs(lat) > 90 && Math.abs(lng) <= 90){ const t = lat; lat = lng; lng = t; }
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180 || isNaN(lat) || isNaN(lng)) throw new Error('坐标无效');
+  // 日期容错：裁剪到预报窗口，避免 HTTP 400
+  const cl = wxClampRange(start, end);
+  if (cl.out) throw new Error('超出预报窗口');
+  start = cl.start; end = cl.end;
+  if (end < start) end = start;
   const key = 'wx:' + lat.toFixed(2) + ',' + lng.toFixed(2) + ':' + start + '~' + end;
   try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && c.ts && Date.now() - c.ts < 2*3600*1000) return c.data; } catch(e){}
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng
@@ -2537,14 +2615,69 @@ async function fetchWeather(lat, lng, start, end){
   try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
   return data;
 }
+
+/** 地名 → 坐标（Open-Meteo 地理编码，免 key）；结果永久缓存到本机 */
+async function wxGeocode(name){
+  name = String(name || '').trim().replace(/^(示例：)/, '');
+  if (!name) return null;
+  try { const c = JSON.parse(localStorage.getItem('wxgeo:' + name) || 'null'); if (c) return c; } catch(e){}
+  try{
+    const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=zh&format=json&name=' + encodeURIComponent(name));
+    if (!r.ok) return null;
+    const j = await r.json();
+    const hit = j.results && j.results[0];
+    if (!hit || hit.latitude == null) return null;
+    const out = { lat: hit.latitude, lng: hit.longitude, label: hit.name };
+    try { localStorage.setItem('wxgeo:' + name, JSON.stringify(out)); } catch(e){}
+    return out;
+  }catch(e){ return null; }
+}
+
+/** 一次请求多个坐标的逐日天气（Open-Meteo 支持逗号分隔多坐标，返回数组） */
+async function fetchWeatherMulti(coords, start, end){
+  if (!coords.length) return [];
+  const cl = wxClampRange(start, end);
+  if (cl.out || cl.end < cl.start) return [];
+  const key = 'wxm:' + coords.map(c => c.lat.toFixed(2) + ',' + c.lng.toFixed(2)).join(';') + ':' + cl.start + '~' + cl.end;
+  try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && c.ts && Date.now() - c.ts < 2*3600*1000) return c.data; } catch(e){}
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + coords.map(c => c.lat).join(',')
+    + '&longitude=' + coords.map(c => c.lng).join(',')
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+    + '&start_date=' + cl.start + '&end_date=' + cl.end + '&timezone=auto';
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  const arr = Array.isArray(j) ? j : [j];
+  const data = arr.map(o => ({ daily: o.daily, elevation: o.elevation }));
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
+  return data;
+}
 /** 渲染当天天气卡（异步填充） */
 async function loadDayWeather(d){
   const card = document.getElementById('wxCard'); if (!card) return;
-  const wc = weatherCoord(d);
-  if (!wc || wc.lat == null){ card.innerHTML = '<div class="wx-none">🌤 补全当天景点坐标后，这里显示天气</div>'; return; }
+  card.innerHTML = '<div class="wx-loading">🌤 天气加载中…</div>';
+
+  // 定位：优先景点坐标；没有则用「留宿城市 / 首个点位名」自动解析坐标
+  let wc = weatherCoord(d);
+  if (!wc || wc.lat == null){
+    const name = (wc && wc.label) || (d.stops[0] && d.stops[0].name) || d.title || '';
+    const g = await wxGeocode(name);
+    if (g) wc = { lat: g.lat, lng: g.lng, label: name };
+  }
+  if (!wc || wc.lat == null){
+    card.innerHTML = '<div class="wx-none">🌤 补全当天景点坐标后，这里显示天气</div>';
+    return;
+  }
+  // 日期在预报窗口（今天+15 天）之外时给友好提示，不发无效请求
+  const hi = addDaysStr(wxTodayStr(), 15);
+  if (d.date > hi){
+    card.innerHTML = '<div class="wx-none">🌤 ' + mdShort(d.date) + ' 还未进入 15 天预报窗口，临近出发再来查</div>';
+    return;
+  }
   const di = DB.days.findIndex(x => x.id === d.id);
   const remain = Math.max(0, DB.days.length - 1 - di);
-  const end = addDaysStr(d.date, Math.min(remain, 6));   // 未来最多 7 天（含当天）
+  let end = addDaysStr(d.date, Math.min(remain, 6));   // 未来最多 7 天（含当天）
+  if (end < d.date) end = d.date;                      // 保险：addDays 异常时兜底
   card.innerHTML = '<div class="wx-loading">🌤 天气加载中…</div>';
   try {
     const data = await fetchWeather(wc.lat, wc.lng, d.date, end);
@@ -2560,12 +2693,10 @@ async function loadDayWeather(d){
 function renderWeatherCard(card, d, wc, data){
   const dyn = data.daily || {};
   const times = dyn.time || [];
-  const idx = Math.max(0, times.indexOf(d.date));
-  if (!times.length){ card.innerHTML = '<div class="wx-none">🌤 该日期暂无预报（可能已过期或超出范围）</div>'; return; }
+  const idx = times.indexOf(d.date);
+  if (!times.length || idx < 0){ card.innerHTML = '<div class="wx-none">🌤 该日期暂无预报（可能已过期或超出范围）</div>'; return; }
   // 实况：仅当行程当天就是「今天」时，用 current（Open-Meteo 实时）显示此刻温度/天气
-  const now = new Date();
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-  const isToday = (d.date === todayStr);
+  const isToday = (d.date === wxTodayStr());
   const cur = (isToday && data.current) ? data.current : null;
   const showCode = (cur && cur.weather_code != null) ? cur.weather_code : ((dyn.weather_code || [])[idx] ?? 0);
   const [icon, label] = wmoMap(showCode);
@@ -8470,6 +8601,14 @@ function b64ToBytes(b64){
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+/** 清理扫码/粘贴可能夹带的空白与 URL-safe 变体，并补齐 padding */
+function b64Sanitize(s){
+  s = String(s).replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  if (s.length % 4 === 1) s = s.slice(0, -1);   // mod4==1 必然是坏码，砍掉尾巴再补
+  while (s.length % 4) s += '=';
+  return s;
+}
+function b64Valid(s){ return /^[A-Za-z0-9+/]*={0,2}$/.test(s) && s.length > 0; }
 const strToB64  = (s) => bytesToB64(new TextEncoder().encode(s));
 const b64ToStr  = (b) => new TextDecoder().decode(b64ToBytes(b));
 
@@ -8508,18 +8647,34 @@ async function encodeShare(obj){
 }
 async function decodeShare(data){
   if (data == null) data = '';
-  data = String(data).trim();
-  if (!data) throw new Error('内容为空');
-  const head = data[0];
+  const raw = String(data).trim();
+  if (!raw) throw new Error('内容为空');
+  const SCAN_BAD = '二维码识别不完整或有失真，请离屏幕近一点、对准后重新扫码；也可改用「粘贴导入」或「导入备份文件」';
   // 兼容：用户直接粘贴了「导出备份」生成的 JSON 文本（以 { 或 [ 开头）
+  const head = raw[0];
   if (head === '{' || head === '['){
-    try{ return JSON.parse(data); }catch(e){ throw new Error('JSON 格式有误'); }
+    try{ return JSON.parse(raw); }catch(e){ throw new Error('JSON 格式有误'); }
   }
-  const tag = head, body = data.slice(1);
-  if (tag === 'G') return JSON.parse(await gunzipBytes(b64ToBytes(body)));
-  if (tag === 'B') return JSON.parse(b64ToStr(body));
+  const compact = raw.replace(/\s+/g, '');
+  const tag = compact[0], body = compact.slice(1);
+  if (tag === 'G'){
+    const b = b64Sanitize(body);
+    // gzip 文件头是 1f 8b 08，对应 base64 开头恒为 "H4sI"；不匹配说明扫码出了坏字符
+    if (!b64Valid(b) || !b.startsWith('H4sI')) throw new Error(SCAN_BAD);
+    try{ return JSON.parse(await gunzipBytes(b64ToBytes(b))); }
+    catch(e){ throw new Error(SCAN_BAD); }
+  }
+  if (tag === 'B'){
+    const b = b64Sanitize(body);
+    if (!b64Valid(b)) throw new Error(SCAN_BAD);
+    try{ return JSON.parse(b64ToStr(b)); }
+    catch(e){ throw new Error(SCAN_BAD); }
+  }
   // 兜底：当作纯 base64 JSON 再试一次
-  try{ return JSON.parse(b64ToStr(data)); }catch(_){}
+  try{ const b = b64Sanitize(compact); if (b64Valid(b)) return JSON.parse(b64ToStr(b)); }catch(_){}
+  // 常见误扫：网址 / 微信 / 支付宝等其他二维码
+  if (/^(https?:|weixin:|wxp:|alipay:|alipays:)/i.test(compact))
+    throw new Error('扫到的是其他二维码（网址/微信/支付宝码），不是本工具生成的行程分享码');
   throw new Error('不是有效的分享文本或备份内容');
 }
 
@@ -8530,6 +8685,8 @@ async function qrShare(){
   let enc, stripped = false;
   enc = await encodeShare(sharePayload(DB));
   const LIMIT = 2850;   // 二维码 version40 容量：纠错级 L≈2953 / M≈2331 字符（base64 为 ASCII）
+  // 码越密渲染就要越大：模块不足 2px 时摄像头/截图极易识别失真
+  const side = enc.length > 2200 ? 520 : (enc.length > 1200 ? 420 : 300);
   if (enc.length > LIMIT){
     const enc2 = await encodeShare(sharePayload(stripImgs(DB)));
     if (enc2.length <= LIMIT){ enc = enc2; stripped = true; }
@@ -8550,7 +8707,8 @@ async function qrShare(){
       <div id="qrBox" style="display:inline-block;padding:12px;background:#fff;border-radius:12px;
         box-shadow:0 4px 16px rgba(0,0,0,.12)">生成中…</div>
       <div style="font-size:13px;color:var(--text-dim);margin-top:12px;line-height:1.85">
-        用另一台设备打开本工具，点「📷 扫码导入」对准此二维码，即可把行程同步过去。
+        用另一台设备打开本工具，点「📷 扫码导入」对准此二维码，即可把行程同步过去。<br>
+        扫码时请离屏幕 <b>15~30 厘米</b>、避免屏幕反光；若反复失败，改用「粘贴导入」或「导入备份文件」最稳。
         ${stripped ? '<br><span style="color:#e08a00">⚠️ 已自动省略图片以压缩体积，导入端需重新上传图片</span>' : ''}
       </div>
     </div>`, [{ text:'关闭', cls:'primary', onClick: c => c() }]);
@@ -8560,7 +8718,7 @@ async function qrShare(){
     const holder = document.createElement('div');
     try{
       new QRCode(holder, {
-        text: enc, width:280, height:280,
+        text: enc, width: side, height: side,
         colorDark:'#0f2d33', colorLight:'#ffffff',
         correctLevel: QRCode.CorrectLevel.L
       });
@@ -8650,6 +8808,7 @@ function applyImportToTrip(obj, tripId){
   const t = TRIPS.find(x => x.id === tripId); if (!t) return;
   const { meta, data } = unpackMeta(obj);
   t.data = migrate(data);
+  const swapped = fixCoordSwap(t.data);   // 顺手修复写反的经纬度
   // 导入数据里带了名字/图标/颜色就一并应用（还原整个旅行档案的身份）；没带则保留原样
   if (meta.name) t.name = meta.name;
   if (meta.emoji) t.emoji = meta.emoji;
@@ -8667,7 +8826,7 @@ function applyImportToTrip(obj, tripId){
   save();
   if (isActive) renderAll();
   renderHome();
-  toast('已导入到旅行档案：' + t.name, 'ok', 4200);
+  toast('已导入到旅行档案：' + t.name + (swapped ? `（自动纠正 ${swapped} 个写反的经纬度）` : ''), 'ok', 4200);
 }
 
 /** 导入到指定旅行前的覆盖确认（与删除卡片的确认风格一致） */
@@ -8819,7 +8978,8 @@ function ovRenderTransports(){
       <div class="ov-trip" data-ticket="${esc(f.id)}">
         <div class="ov-trip-l">
           <span class="ov-trip-badge">${esc(f.type || '交通')}</span>
-          <div class="ov-trip-no">${esc(f.no || posterDate(f.date) || '')}</div>
+          <div class="ov-trip-no">${esc(f.no || '')}</div>
+          ${f.date ? `<div class="ov-trip-date">📅 ${posterDate(f.date)}</div>` : ''}
         </div>
         <div class="ov-trip-mid">
           <div class="ov-time"><span class="${noTime ? 'ov-miss' : ''}">${esc(dep)}</span><small>${esc(f.from || '')}</small></div>
@@ -8831,6 +8991,92 @@ function ovRenderTransports(){
   return `
     <div class="ov-sec-head"><span class="ov-sec-title">交通票据</span><span class="ov-sec-hint">共 ${list.length} 段</span></div>
     <div class="ov-rows">${rows}</div>`;
+}
+
+/* ---------- 总览 · 全程天气汇总（在哪 · 什么天气） ---------- */
+function ovRenderWeather(){
+  const days = (DB && DB.days) || [];
+  if (!days.length) return '';
+  const rows = days.map((d, i) => `
+    <div class="ov-wxrow" data-wxd="${i}">
+      <span class="ov-wxd">D${i + 1} · ${posterDate(d.date)}</span>
+      <span class="ov-wxp">${esc(dayLabel(d))}</span>
+      <span class="ov-wxv" data-wxv="${i}">…</span>
+    </div>`).join('');
+  return `
+    <div class="ov-sec-head"><span class="ov-sec-title">全程天气</span><span class="ov-sec-hint" id="ovWxHint">加载中…</span></div>
+    <div class="ov-rows" id="ovWxRows">${rows}</div>`;
+}
+
+/** 当天展示用的地名：留宿城市优先，否则第一个点位 */
+function dayLabel(d){
+  const stay = String(d.stay || '').trim();
+  if (stay && !stayPlaceholder(stay)) return stay;
+  const s = (d.stops || []).find(x => x.name);
+  return (s && s.name) || d.title || '';
+}
+
+/** 异步填充总览天气：地名解析 → 多坐标一次请求 → 按天回填 */
+async function loadOverviewWeather(){
+  const box = document.getElementById('ovWxRows');
+  if (!box) return;
+  const days = (DB && DB.days) || [];
+  if (!days.length) return;
+  const hint = document.getElementById('ovWxHint');
+  const hi = addDaysStr(wxTodayStr(), 15);
+
+  // 1) 每天定坐标：景点坐标 → 留宿/点位名地理编码
+  const plan = [];
+  for (let i = 0; i < days.length; i++){
+    const d = days[i];
+    let wc = weatherCoord(d);
+    if (!wc || wc.lat == null){
+      const name = (wc && wc.label) || dayLabel(d);
+      const g = await wxGeocode(name);
+      if (g) wc = { lat: g.lat, lng: g.lng, label: name };
+      else wc = null;
+    }
+    plan.push({ i, d, wc, date: d.date });
+  }
+
+  // 2) 归并到唯一坐标，一次请求整段日期范围
+  const uniq = [];
+  plan.forEach(p => {
+    if (!p.wc) return;
+    const k = p.wc.lat.toFixed(2) + ',' + p.wc.lng.toFixed(2);
+    let u = uniq.find(x => x.k === k);
+    if (!u){ u = { k, lat: p.wc.lat, lng: p.wc.lng }; uniq.push(u); }
+  });
+  const dates = plan.map(p => p.date).filter(Boolean).sort();
+  let data = [];
+  if (uniq.length && dates.length){
+    try{
+      data = await fetchWeatherMulti(uniq, dates[0], dates[dates.length - 1]);
+    }catch(e){ console.warn('总览天气失败', e); }
+  }
+  const map = {};   // "lat,lng" -> daily
+  uniq.forEach((u, idx) => { map[u.k] = data[idx] || null; });
+
+  // 3) 逐天回填
+  let okCnt = 0;
+  plan.forEach(p => {
+    const el = box.querySelector('[data-wxv="' + p.i + '"]');
+    if (!el) return;
+    const row = el.closest('.ov-wxrow');
+    if (!p.wc){ el.innerHTML = '<span class="ov-wxmiss">未定位（补坐标后可查）</span>'; return; }
+    if (p.date > hi){ el.innerHTML = '<span class="ov-wxmiss">临近可查</span>'; return; }
+    const k = p.wc.lat.toFixed(2) + ',' + p.wc.lng.toFixed(2);
+    const dd = map[k] && map[k].daily;
+    const idx2 = dd && dd.time ? dd.time.indexOf(p.date) : -1;
+    if (!dd || idx2 < 0){ el.innerHTML = '<span class="ov-wxmiss">暂无预报</span>'; return; }
+    const [ic, lb] = wmoMap((dd.weather_code || [])[idx2] ?? 0);
+    const tmin = Math.round((dd.temperature_2m_min || [])[idx2]);
+    const tmax = Math.round((dd.temperature_2m_max || [])[idx2]);
+    const pop = (dd.precipitation_probability_max || [])[idx2];
+    el.innerHTML = `<span class="ov-wxico">${ic}</span><span class="ov-wxlb">${lb}</span><span class="ov-wxt">${tmin}°~${tmax}°${pop != null ? ' · ' + pop + '%' : ''}</span>`;
+    okCnt++;
+  });
+  if (hint) hint.textContent = okCnt ? `${okCnt}/${days.length} 天` : '暂不可用';
 }
 
 function ovRenderDays(){
@@ -9011,6 +9257,7 @@ function renderOverview(){
 
   body.innerHTML =
     ovRenderTransports() +
+    ovRenderWeather() +
     ovRenderDays() +
     ovRenderMemos() +
     ovRenderMissing();
@@ -9022,6 +9269,7 @@ function renderOverview(){
   $$('#ovBody [data-ticket]').forEach(el => {
     el.onclick = () => { setViewMode('edit'); toast('已切到编辑模式，可在「交通票据」里修改', 'ok', 2600); };
   });
+  loadOverviewWeather();
 }
 
 /** 从总览点进某一天的详情：切编辑模式 + 选中该天 + 地图置顶 + 滚回顶部 */
@@ -9375,6 +9623,7 @@ function bindGlobal(){
 (function boot(){
   applyTheme(themeKey);     // 先上色，避免闪白
   load();
+  if (fixCoordSwap(DB)) save();   // 修复历史数据里写反的经纬度（否则天气/地图都会出错）
   initMap();
   bindGlobal();
   bindVideoMaker();
