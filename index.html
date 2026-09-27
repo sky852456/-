@@ -1015,6 +1015,26 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
   background:var(--panel);border:1px solid var(--line);
   padding:2px 8px;border-radius:5px;color:var(--text-dim);
 }
+/* ---- 当日时间线（几点做什么） ---- */
+.tl-card{
+  margin-bottom:12px;padding:12px 15px;border-radius:13px;
+  background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--brand);
+}
+.tl-h{
+  font-size:12.5px;font-weight:800;color:var(--text-dim);
+  letter-spacing:.5px;margin-bottom:7px;
+}
+.tl-row{display:flex;gap:11px;padding:4.5px 0;font-size:13.5px;line-height:1.55;align-items:baseline;}
+.tl-time{
+  flex:none;min-width:92px;font-variant-numeric:tabular-nums;
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:12.5px;font-weight:800;color:var(--brand);white-space:nowrap;
+}
+.tl-txt{color:var(--text-dim);min-width:0;}
+.tl-ico{font-size:14px;}
+.tl-sub{display:block;font-size:12px;color:var(--text-mute);margin-top:1px;}
+.tl-gap .tl-time{color:var(--text-mute);font-weight:600;}
+.tl-gap .tl-txt{color:var(--text-mute);font-size:12.5px;}
 .day-city{
   margin-bottom:12px;padding:13px 15px;border-radius:13px;
   background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(245,158,11,.035));
@@ -1945,10 +1965,10 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
  *   budget: Number,                 // 全程预算，0 表示未设置
  *   days: [ {
  *     id, date:'2026-05-01', title:'东京第一天', stay:'新宿华盛顿酒店',
- *     stops: [ { id, name, ticket:'¥120', duration:'2h', lat, lng, note, img? } ]
+ *     stops: [ { id, name, time:'15:00'(选填·计划开始时间), ticket:'¥120', duration:'2h', lat, lng, note, img? } ]
  *   } ],
- *   tickets: [ { id, type:'高铁'|'航班'|'其他', no:'G1234', date, depTime, arrTime,
- *                from, to, price, seat, note } ],
+ *   tickets: [ { id, type:'高铁'|'航班'|'门票'|..., no:'G1234', name:'场馆名(门票用)',
+ *                date, depTime, arrTime, from, to, price, seat, note } ],
  *   expenses: [ { id, date, amount, cat, item, note, img? } ],   // img 为 base64
  *   _v: 1
  * }
@@ -1957,7 +1977,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 /* ========================= 0. 常量定义 ========================= */
 const LS_KEY = 'TRAVEL_PLANNER_V1';          // localStorage 键名
 const LS_AMAP_KEY = LS_KEY + '_amapkey';     // 高德 Web服务 Key（仅存本机）
-const APP_VERSION = 'v1.8.1';                // 应用版本（与 sw.js VERSION 保持一致）
+const APP_VERSION = 'v1.8.2';                // 应用版本（与 sw.js VERSION 保持一致）
 const LS_LAST_EXPORT = LS_KEY + '_lastExport';        // 最近一次成功导出备份的时间戳
 const LS_BACKUP_REMIND = LS_KEY + '_backupRemind';    // 备份提醒节流：{ date, dismissed }
 const WX_SNAP_KEY = 'TP_WEATHER_SNAPSHOT';   // 天气离线快照（按坐标，LRU 最多 30）
@@ -1976,7 +1996,7 @@ const CATS = [                                 // 消费分类（含图标与配
   { k:'住宿', ico:'🏨', color:'#4cc2dd' },
   { k:'其他', ico:'📦', color:'#9cc3cd' },
 ];
-const TICKET_TYPES = ['高铁','航班','火车','大巴','轮渡','其他'];
+const TICKET_TYPES = ['高铁','航班','火车','大巴','轮渡','门票','其他'];
 
 /* ==========================================================================
    内置坐标库 —— 免 Key 兜底
@@ -3125,6 +3145,53 @@ function scheduleBackupReminder(){
   setTimeout(() => { maybeRemindBackup(); scheduleBackupReminder(); }, next - now);
 }
 
+/**
+ * 当日时间线：「几点到几点做什么」。
+ *   固定事件 = 当日交通票（几点发/到）+ 门票场次（几点入场）+ 填了计划时间的点位，
+ *   按时刻排序；两个事件之间空档 ≥ 40 分钟给一条「空闲」提示。
+ *   没填时间的点位统一列在末尾，提醒用户补时间。
+ */
+function dayTimeline(d){
+  if (!d) return null;
+  const toMin = (s) => { const p = String(s || '').split(':'); return p.length === 2 && !isNaN(Number(p[0])) ? Number(p[0]) * 60 + Number(p[1]) : null; };
+  const fmt = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const evs = [];
+  (DB.tickets || []).filter(t => t.date && normDate(t.date) === normDate(d.date)).forEach(t => {
+    if (!t.depTime) return;
+    const adm = t.type === '门票';
+    evs.push({
+      t: t.depTime, end: t.arrTime || '', _src: 'tk:' + t.id,
+      ico: adm ? '🎫' : /航班/.test(t.type) ? '✈️' : /高铁|火车/.test(t.type) ? '🚄' : '🚌',
+      txt: adm
+        ? `${t.name || t.to || '门票预约'} · 场次入场`
+        : `${t.type} ${t.no || ''}  ${t.from || '?'} ➜ ${t.to || '?'}`.trim(),
+      sub: adm ? (t.note || '') : (t.seat ? `座位 ${t.seat}` : '')
+    });
+  });
+  (d.stops || []).filter(s => s.time && !(s.src && evs.some(e => e._src === s.src))).forEach(s => {
+    evs.push({ t: s.time, end: '', ico: '📍', txt: s.name, sub: s.duration ? `预计游玩 ${s.duration}` : '' });
+  });
+  if (!evs.length) return null;
+  evs.sort((a, b) => String(a.t).localeCompare(String(b.t)));
+  const rows = [];
+  let prevEnd = null;
+  evs.forEach(e => {
+    const m = toMin(e.t);
+    if (prevEnd != null && m != null && m - prevEnd >= 40){
+      rows.push(`<div class="tl-row tl-gap"><span class="tl-time">${fmt(prevEnd)} – ${fmt(m)}</span>
+        <span class="tl-txt">⏳ 空闲 · 可自由安排（赶路 / 加个点位 / 休整吃饭）</span></div>`);
+    }
+    rows.push(`<div class="tl-row"><span class="tl-time">${esc(e.t)}${e.end ? '–' + esc(e.end) : ''}</span>
+      <span class="tl-txt"><span class="tl-ico">${e.ico}</span> ${esc(e.txt)}${e.sub ? `<span class="tl-sub">${esc(e.sub)}</span>` : ''}</span></div>`);
+    if (m != null) prevEnd = Math.max(prevEnd || 0, e.end ? (toMin(e.end) ?? m) : m);
+  });
+  const noTime = (d.stops || []).filter(s => !s.time);
+  const tail = `<div class="tl-row tl-gap"><span class="tl-time">其余</span><span class="tl-txt">${
+    noTime.length ? `未定时间点位：${noTime.map(s => esc(s.name)).join('、')}（编辑点位可补时间）` : '之后自由安排'
+  }</span></div>`;
+  return `<div class="tl-card"><div class="tl-h">🕐 当日时间线 · 几点做什么</div>${rows.join('')}${tail}</div>`;
+}
+
 function renderDayDetail(){
   const d = activeDay();
   if (!d){
@@ -3294,7 +3361,9 @@ function renderDayDetail(){
 
   // 天气卡（占位，loadDayWeather 异步填充）
   const wxHTML = `<div class="wx-card wx-placeholder" id="wxCard"><div class="wx-loading">🌤 天气</div></div>`;
-  $('#stopList').innerHTML = roleHTML + transHTML + cityHTML + wxHTML + (parts.join('') || `
+  // 当日时间线：交通班次 + 门票场次 + 有时间的点位，按时刻排序 + 空闲提示
+  const tlHTML = dayTimeline(d) || '';
+  $('#stopList').innerHTML = roleHTML + transHTML + tlHTML + cityHTML + wxHTML + (parts.join('') || `
     <div class="empty" style="padding:30px 18px">
       <div style="font-size:34px;line-height:1;margin-bottom:10px">${rm.ico}</div>
       <div style="font-size:15px;font-weight:700;color:var(--text-dim);margin-bottom:6px">这一天还没有安排景点</div>
@@ -3398,17 +3467,22 @@ function isCoord(a, b){
  */
 function stopForm(d, stopId = null, preset = null){
   const isEdit = !!stopId;
-  const s = isEdit ? d.stops.find(x => x.id === stopId) : { name:'', ticket:'', duration:'', lat:'', lng:'', note:'', img:null, ...(preset||{}) };
+  const s = isEdit ? d.stops.find(x => x.id === stopId) : { name:'', time:'', ticket:'', duration:'', lat:'', lng:'', note:'', img:null, ...(preset||{}) };
   // 必须在 openModal 之前声明：保存按钮的回调与 onMount 共享这个变量
   let tempImg = s.img || null;
   const body = `
     <div class="field"><label>景点 / 地点名称 *</label>
       <input class="input" id="f-name" value="${esc(s.name)}" placeholder="如：浅草寺"></div>
     <div class="grid-form">
-      <div class="field"><label>门票信息</label>
-        <input class="input" id="f-ticket" value="${esc(s.ticket)}" placeholder="如：¥50 / 免费"></div>
+      <div class="field"><label>计划开始时间（选填·进时间线）</label>
+        <input class="input" id="f-time" type="time" value="${esc(s.time || '')}"></div>
       <div class="field"><label>预计游玩时长</label>
         <input class="input" id="f-duration" value="${esc(s.duration)}" placeholder="如：2 小时"></div>
+    </div>
+    <div class="grid-form">
+      <div class="field"><label>门票信息</label>
+        <input class="input" id="f-ticket" value="${esc(s.ticket)}" placeholder="如：¥50 / 免费"></div>
+      <div class="field"></div>
     </div>
     <div class="grid-form">
       <div class="field"><label>纬度 lat</label>
@@ -3433,7 +3507,7 @@ function stopForm(d, stopId = null, preset = null){
         const lng = $('#f-lng').value === '' ? null : Number($('#f-lng').value);
         if ((lat != null && isNaN(lat)) || (lng != null && isNaN(lng))) return toast('经纬度格式不正确', 'warn');
         const payload = {
-          name, ticket: $('#f-ticket').value.trim(), duration: $('#f-duration').value.trim(),
+          name, time: $('#f-time').value, ticket: $('#f-ticket').value.trim(), duration: $('#f-duration').value.trim(),
           lat, lng, note: $('#f-note').value.trim(), img: tempImg || s.img || null
         };
         if (isEdit) Object.assign(s, payload);
@@ -3457,7 +3531,7 @@ function stopForm(d, stopId = null, preset = null){
       $('#sec-map').scrollIntoView({ behavior:'smooth' });
       pickMode = (lat, lng) => {
         pickMode = null;
-        stopForm(d, stopId, { name: $('#f-name')?.value || s.name, ticket: s.ticket, duration: s.duration, lat, lng, note: s.note, img: tempImg });
+        stopForm(d, stopId, { name: $('#f-name')?.value || s.name, time: $('#f-time')?.value || s.time || '', ticket: s.ticket, duration: s.duration, lat, lng, note: s.note, img: tempImg });
       };
     };
     // 自动补全坐标（内置库优先，高德兜底）
@@ -3894,27 +3968,37 @@ function renderTickets(){
     $('#btnAddTicketEmpty').onclick = () => ticketForm(null);
     return;
   }
-  $('#ticketList').innerHTML = list.map(t => `
-    <div class="exp" style="align-items:flex-start">
-      <div class="ico" style="background:rgba(99,102,241,.14)">
-        ${t.type==='航班' ? '✈️' : (t.type==='高铁' || t.type==='火车') ? '🚄' : t.type==='轮渡' ? '⛴️' : '🚌'}
-      </div>
-      <div class="mid">
-        <div class="t">${esc(t.type)} ${esc(t.no) || '(未填班次)'} ${t.seat ? `<span class="chip gray" style="margin-left:5px">${esc(t.seat)}</span>` : ''}</div>
-        <div class="s">${esc(t.date)} ${esc(t.depTime)} → ${esc(t.arrTime)}</div>
+  $('#ticketList').innerHTML = list.map(t => {
+    const adm = t.type === '门票';
+    const ico = adm ? '🎫' : t.type==='航班' ? '✈️' : (t.type==='高铁' || t.type==='火车') ? '🚄' : t.type==='轮渡' ? '⛴️' : '🚌';
+    const title = adm
+      ? `🎫 ${esc(t.name || t.to || '门票预约')}`
+      : `${esc(t.type)} ${esc(t.no) || '(未填班次)'} ${t.seat ? `<span class="chip gray" style="margin-left:5px">${esc(t.seat)}</span>` : ''}`;
+    const timeLine = adm
+      ? `${esc(t.date)} 场次 ${esc(t.depTime || '?')}${t.arrTime ? '–' + esc(t.arrTime) : ''}`
+      : `${esc(t.date)} ${esc(t.depTime)} → ${esc(t.arrTime)}`;
+    const placeLine = adm ? '' : `
         <div class="s" style="color:var(--text-dim);font-weight:600">
           ${esc(t.from) || '?'} <span style="color:var(--brand)">➜</span> ${esc(t.to) || '?'}
-        </div>
+        </div>`;
+    return `
+    <div class="exp" style="align-items:flex-start">
+      <div class="ico" style="background:rgba(99,102,241,.14)">${ico}</div>
+      <div class="mid">
+        <div class="t">${title}</div>
+        <div class="s">${timeLine}</div>
+        ${placeLine}
         ${t.note ? `<div class="s" style="margin-top:3px">${esc(t.note)}</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <span class="amt">${fmtMoney(t.price)}</span>
+        <span class="amt">${t.price ? fmtMoney(t.price) : (adm ? '预约' : fmtMoney(0))}</span>
         <div class="act">
           <button data-editt="${t.id}" title="编辑">✏️</button>
           <button class="del" data-delt="${t.id}" title="删除">🗑</button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   $$('#ticketList [data-editt]').forEach(b => b.onclick = () => ticketForm(b.dataset.editt));
   $$('#ticketList [data-delt]').forEach(b => b.onclick = () => {
@@ -3928,23 +4012,27 @@ function renderTickets(){
 
 function ticketForm(ticketId = null, preset = null){
   const t = ticketId ? DB.tickets.find(x => x.id === ticketId)
-                     : Object.assign({ type:'高铁', no:'', date: activeDay()?.date || todayISO(), depTime:'', arrTime:'', from:'', to:'', price:'', seat:'', note:'' }, preset || {});
+                     : Object.assign({ type:'高铁', no:'', name:'', date: activeDay()?.date || todayISO(), depTime:'', arrTime:'', from:'', to:'', price:'', seat:'', note:'' }, preset || {});
+  const isAdm = t.type === '门票';
+  const canAddStop = !ticketId && t.date && !!dayByDate(t.date);
   const body = `
     <div class="grid-form">
       <div class="field"><label>类型</label>
         <select class="input" id="t-type">${TICKET_TYPES.map(x => `<option ${x===t.type?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div class="field"><label>班次 / 航班号</label>
+      <div class="field" id="t-no-row"><label>班次 / 航班号</label>
         <input class="input" id="t-no" value="${esc(t.no)}" placeholder="如 G1234 / MU5137"></div>
     </div>
+    <div class="field" id="t-name-row" style="${isAdm ? '' : 'display:none'}"><label>场馆 / 景点名称 *</label>
+      <input class="input" id="t-name" value="${esc(t.name || t.to || '')}" placeholder="如 甘肃省博物馆"></div>
     <div class="grid-form">
-      <div class="field"><label>乘车/机日期</label>
+      <div class="field"><label id="t-date-lbl">乘车/机日期</label>
         <input class="input" id="t-date" type="date" value="${t.date}"></div>
-      <div class="field"><label>出发时间</label>
+      <div class="field"><label id="t-dep-lbl">出发时间</label>
         <input class="input" id="t-dep" type="time" value="${esc(t.depTime)}"></div>
-      <div class="field"><label>到达时间</label>
+      <div class="field"><label id="t-arr-lbl">到达时间</label>
         <input class="input" id="t-arr" type="time" value="${esc(t.arrTime)}"></div>
     </div>
-    <div class="grid-form">
+    <div class="grid-form" id="t-route-row" style="${isAdm ? 'display:none' : ''}">
       <div class="field"><label>出发地</label>
         <input class="input" id="t-from" value="${esc(t.from)}" placeholder="如 北京南"></div>
       <div class="field"><label>到达地</label>
@@ -3957,22 +4045,105 @@ function ticketForm(ticketId = null, preset = null){
         <input class="input" id="t-seat" value="${esc(t.seat)}" placeholder="如 08车12F"></div>
     </div>
     <div class="field"><label>备注</label>
-      <input class="input" id="t-note" value="${esc(t.note)}" placeholder="取票方式 / 中转信息"></div>`;
+      <input class="input" id="t-note" value="${esc(t.note)}" placeholder="取票方式 / 场次规则 / 入园地址"></div>
+    ${canAddStop ? `<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);margin-top:4px;cursor:pointer">
+      <input type="checkbox" id="t-addstop" ${isAdm ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand)">
+      按时间同步写入当日行程（行程明细时间线可见）</label>` : ''}`;
   openModal(ticketId ? '编辑票务' : '录入票务', body, [
     { text:'取消', cls:'ghost', onClick: c => c() },
     { text: ticketId ? '保存修改' : '添加', cls:'primary', onClick: c => {
+      const adm = $('#t-type').value === '门票';
+      if (adm && !$('#t-name').value.trim()) return toast('请填写场馆 / 景点名称', 'warn');
       const payload = {
-        type: $('#t-type').value, no: $('#t-no').value.trim(), date: normDate($('#t-date').value),
+        type: $('#t-type').value,
+        no: adm ? '' : $('#t-no').value.trim(),
+        name: adm ? $('#t-name').value.trim() : '',
+        date: normDate($('#t-date').value),
         depTime: $('#t-dep').value, arrTime: $('#t-arr').value,
-        from: $('#t-from').value.trim(), to: $('#t-to').value.trim(),
+        from: adm ? '' : $('#t-from').value.trim(),
+        to: adm ? '' : $('#t-to').value.trim(),
         price: Number($('#t-price').value) || 0, seat: $('#t-seat').value.trim(),
         note: $('#t-note').value.trim()
       };
       if (ticketId) Object.assign(t, payload);
-      else DB.tickets.push({ id: uid(), ...payload });
+      else {
+        const nt = { id: uid(), ...payload };
+        DB.tickets.push(nt);
+        const chk = $('#t-addstop');
+        if (chk && chk.checked && payload.date){
+          const r = ticketToStop(nt);
+          if (r) toast((r.updated ? '已更新当日行程点位：' : '已写入当日行程：') + (r.day.title || r.day.date), 'ok', 3200);
+          else toast(`行程里没有 ${payload.date} 这一天，票已录入但未写入行程（可先「加一天」）`, 'warn', 4200);
+        }
+      }
       save(); closeModal(); renderAll(); toast(ticketId ? '已保存' : '已录入票务');
     }}
-  ]);
+  ], () => {
+    // 类型切换 → 门票 / 交通票字段联动
+    const syncAdm = () => {
+      const adm = $('#t-type').value === '门票';
+      $('#t-no-row').style.display = adm ? 'none' : '';
+      $('#t-name-row').style.display = adm ? '' : 'none';
+      $('#t-route-row').style.display = adm ? 'none' : '';
+      $('#t-date-lbl').textContent = adm ? '使用日期' : '乘车/机日期';
+      $('#t-dep-lbl').textContent = adm ? '场次开始' : '出发时间';
+      $('#t-arr-lbl').textContent = adm ? '场次结束' : '到达时间';
+    };
+    $('#t-type').onchange = syncAdm;
+    syncAdm();
+  });
+}
+
+/* ---------- 门票 / 预约票 → 当日行程时间线 ---------- */
+
+/** 按 ISO 日期（yyyy-mm-dd）精确找行程天 */
+function dayByDate(iso){
+  const k = normDate(iso);
+  return DB.days.find(d => normDate(d.date) === k) || null;
+}
+
+/** 两个 HH:MM 的时长文案（15:00→16:30 = 1小时30分；跨天按 24h 折返） */
+function hmDiff(a, b){
+  const pa = String(a || '').split(':'), pb = String(b || '').split(':');
+  if (pa.length < 2 || pb.length < 2) return '';
+  let m = (Number(pb[0]) * 60 + Number(pb[1])) - (Number(pa[0]) * 60 + Number(pa[1]));
+  if (isNaN(m)) return '';
+  if (m < 0) m += 24 * 60;
+  const h = Math.floor(m / 60), mm = m % 60;
+  return h ? (mm ? `${h}小时${mm}分` : `${h}小时`) : `${mm}分钟`;
+}
+
+/**
+ * 把一张票写入对应日期的行程（当日时间线可见）。
+ * 已存在同名点位 → 更新时间/备注；否则按场次时间顺序插入点位列表。
+ * 返回 { day, stop, updated }；行程里没有对应日期的天 → null。
+ */
+function ticketToStop(t){
+  const d = dayByDate(t.date);
+  if (!d) return null;
+  const name = t.name || t.to || (t.type + ' 班次');
+  const note = [
+    t.type === '门票' && t.depTime ? `场次 ${t.depTime}${t.arrTime ? '–' + t.arrTime : ''} 有效` : '',
+    t.note || ''
+  ].filter(Boolean).join(' · ');
+  const ex = d.stops.find(s => s.name === name);
+  if (ex){
+    if (t.depTime) ex.time = t.depTime;
+    if (!ex.ticket && t.price) ex.ticket = '¥' + t.price;
+    ex.note = [ex.note, note].filter(Boolean).join('\n');
+    ex.src = 'tk:' + t.id;              // 标记来源，避免时间线重复显示
+    return { day: d, stop: ex, updated: true };
+  }
+  const stop = {
+    id: uid(), name, time: t.depTime || '',
+    ticket: t.price ? '¥' + t.price : '',
+    duration: (t.depTime && t.arrTime) ? hmDiff(t.depTime, t.arrTime) : '',
+    lat: null, lng: null, note, img: null,
+    src: 'tk:' + t.id                   // 标记来源，避免时间线重复显示
+  };
+  const idx = t.depTime ? d.stops.findIndex(s => s.time && s.time > t.depTime) : -1;
+  if (idx >= 0) d.stops.splice(idx, 0, stop); else d.stops.push(stop);
+  return { day: d, stop, updated: false };
 }
 
 /* ========================= 10. 记账模块 ========================= */
@@ -4428,7 +4599,7 @@ function ticketOcrEntry(){
   }
   openModal('📷 票务截图识别', `
     <div style="font-size:13px;color:var(--text-dim);line-height:1.8">
-      支持 12306 / 携程 / 航旅纵横 / 航司 App 的订单或登机牌截图。识别在本机浏览器完成，图片不上传。<br>
+      支持 12306 / 携程 / 航旅纵横 / 航司 App 的订单或登机牌截图，也支持<b>门票 / 预约票</b>（识别场次时间、使用日期、场馆、入园地址，并可一键写入当日行程）。识别在本机浏览器完成，图片不上传。<br>
       <span style="color:var(--text-mute)">（OCR 为本地识别，地名/站名可能有偏差，填完请核对一遍再添加）</span>
     </div>
     <div class="field"><label>选择票务截图</label>
@@ -4482,17 +4653,24 @@ function parseTicketText(text){
   const out = {};
   const p2 = (n) => String(n).padStart(2, '0');
 
-  // 1) 班次 / 航班号
+  /* 门票 / 预约票判定：命中关键词即走「场次」解析逻辑，
+     不做班次号 / 出发到达地提取（那是交通票的逻辑，会误提取） */
+  const isAdm = /(预约票|预约门票|门票|入园|入场|场次|使用日期|凭身份证|入园地址)/.test(full);
+
+  // 1) 班次 / 航班号（门票跳过）
   let no = null;
-  const kwNo = full.match(/(?:车次|航班号?|航班|列车号|票号|flight\s*no\.?|no\.?)\s*[:：]?\s*([A-Za-z0-9]{2,10})/i);
-  if (kwNo) no = kwNo[1].toUpperCase();
-  if (!no){ const t = full.match(/\b([GCDZTKLY])\s*(\d{1,5})\b/); if (t) no = (t[1] + t[2]).toUpperCase(); }
-  if (!no){ const fl = full.match(/\b([A-Za-z]{2})\s*(\d{2,4})\b/); if (fl) no = (fl[1] + fl[2]).toUpperCase(); }
-  if (no) out.no = no;
+  if (!isAdm){
+    const kwNo = full.match(/(?:车次|航班号?|航班|列车号|票号|flight\s*no\.?|no\.?)\s*[:：]?\s*([A-Za-z0-9]{2,10})/i);
+    if (kwNo) no = kwNo[1].toUpperCase();
+    if (!no){ const t = full.match(/\b([GCDZTKLY])\s*(\d{1,5})\b/); if (t) no = (t[1] + t[2]).toUpperCase(); }
+    if (!no){ const fl = full.match(/\b([A-Za-z]{2})\s*(\d{2,4})\b/); if (fl) no = (fl[1] + fl[2]).toUpperCase(); }
+    if (no) out.no = no;
+  }
 
   // 2) 类型推断
   let type = '其他';
-  if (/(高铁|动车|城际|复兴号|和谐号)/i.test(full) && !/(航班|飞机|航空)/i.test(full)) type = '高铁';
+  if (isAdm) type = '门票';
+  else if (/(高铁|动车|城际|复兴号|和谐号)/i.test(full) && !/(航班|飞机|航空)/i.test(full)) type = '高铁';
   else if (/(航班|飞机|航空|登机|boarding|airline)/i.test(full) || (no && /^[A-Z]{2}\d/.test(no))) type = '航班';
   else if (/(火车|列车|普快|特快|直达)/i.test(full) || (no && /^[ZTKLY]\d/.test(no))) type = '火车';
   else if (/(大巴|客运|汽车|长途)/i.test(full)) type = '大巴';
@@ -4507,7 +4685,12 @@ function parseTicketText(text){
   else { const d2 = full.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/); if (d2) date = `${new Date().getFullYear()}-${p2(d2[1])}-${p2(d2[2])}`; }
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) out.date = date;
 
-  // 4) 出发 / 到达时间
+  // 4) 时间：门票优先取「场次时间段」（15:00-16:00），其余走出发/到达时刻
+  if (isAdm){
+    const ses = full.match(/(?:场次(?:时间)?|入场时间|开放时间)\s*[:：]?\s*(\d{1,2}:\d{2})\s*[-–—~至到]\s*(\d{1,2}:\d{2})/);
+    const rng = ses || full.match(/(\d{1,2}:\d{2})\s*[-–—~]\s*(\d{1,2}:\d{2})/);
+    if (rng){ out.depTime = rng[1]; out.arrTime = rng[2]; }
+  }
   const times = (full.match(/\d{1,2}\s*[:：]\s*\d{2}/g) || []).map(s => s.replace(/\s/g, '').replace('：', ':'));
   const depMt = full.match(/(?:出发|起飞|始发|离站|开车)\s*[:：]?\s*(\d{1,2}\s*[:：]\s*\d{2})/);
   const arrMt = full.match(/(?:到达|抵达|落地|终到|到站)\s*[:：]?\s*(\d{1,2}\s*[:：]\s*\d{2})/);
@@ -4516,19 +4699,32 @@ function parseTicketText(text){
   if (!out.depTime && times[0]) out.depTime = times[0];
   if (!out.arrTime && times[1]) out.arrTime = times[1];
 
-  // 5) 出发地 / 到达地（显式关键词优先，其次才是箭头/「到」分隔；「到」需排除「到达/抵达」）
+  // 5) 出发地 / 到达地（显式关键词优先，其次才是箭头/「到」分隔；「到」需排除「到达/抵达」）；门票跳过
   const cleanPlace = (s) => s ? s.replace(/^(出发|始发|起飞|起飞机场?|出发站|到达|抵达|终到|落地|目的)/, '') : s;
-  let from = '', to = '';
-  const depCity = full.match(/(?:出发|始发|起飞机场?|出发站)\s*[:：]?\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
-  const arrCity = full.match(/(?:到达|抵达|终到|目的|落地)\s*[:：]?\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
-  if (depCity) from = cleanPlace(depCity[1]);
-  if (arrCity) to = cleanPlace(arrCity[1]);
-  if (!from || !to){
-    const route = full.match(/([\u4e00-\u9fa5]{2,8}(?:站|机场)?)\s*(?:→|➜|->|—|至|到(?!达|抵))\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
-    if (route){ if (!from) from = cleanPlace(route[1]); if (!to) to = cleanPlace(route[2]); }
+  if (!isAdm){
+    let from = '', to = '';
+    const depCity = full.match(/(?:出发|始发|起飞机场?|出发站)\s*[:：]?\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
+    const arrCity = full.match(/(?:到达|抵达|终到|目的|落地)\s*[:：]?\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
+    if (depCity) from = cleanPlace(depCity[1]);
+    if (arrCity) to = cleanPlace(arrCity[1]);
+    if (!from || !to){
+      const route = full.match(/([\u4e00-\u9fa5]{2,8}(?:站|机场)?)(?:\s*[A-Z]{2,4})?\s*(?:→|➜|->|—|至|到(?!达|抵))\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
+      if (route){ if (!from) from = cleanPlace(route[1]); if (!to) to = cleanPlace(route[2]); }
+    }
+    if (from) out.from = from;
+    if (to) out.to = to;
+  } else {
+    // 5.5) 门票专属：场馆名 / 入园地址 / 票种与证件提示
+    const nm = full.match(/([\u4e00-\u9fa5]{2,15}(?:博物馆|美术馆|科技馆|纪念馆|陈列馆|展览馆|景区|动物园|植物园|故居|遗址公园|地质公园|国家公园))/);
+    if (nm) out.name = nm[1];
+    const tips = [];
+    const addr = full.match(/(?:入园地址|入场地址|场馆地址|景区地址|地址)\s*[:：]?\s*([\u4e00-\u9fa5\d][^\n]{5,45})/);
+    if (addr) tips.push(addr[1].trim());
+    if (/凭[^，。\s]{0,8}身份证|身份证直接/.test(full)) tips.push('凭身份证入园');
+    const pk = full.match(/(普通游客|成人票|优惠票|儿童票|学生票|老人票)/);
+    if (pk) tips.push('票种：' + pk[1]);
+    if (tips.length) out.note = tips.join(' · ');
   }
-  if (from) out.from = from;
-  if (to) out.to = to;
 
   // 6) 票价
   let price = null;
@@ -4538,14 +4734,16 @@ function parseTicketText(text){
   if (pr){ const v = Number(pr[1]); if (v > 0 && v < 1000000) price = v; }
   if (price != null) out.price = price;
 
-  // 7) 座位 / 舱位
+  // 7) 座位 / 舱位（门票跳过）
   let seat = null;
-  const seatCl = full.match(/(经济舱|商务舱|头等舱|公务舱|一等座|二等座|软卧|硬卧|硬座|无座)/);
-  const seatCar = full.match(/(\d+\s*车\s*\d+[A-F]?)/);
-  const seatLt = full.match(/\b([A-F]\d{1,2})\b/);
-  if (seatCl) seat = seatCl[1];
-  else if (seatCar) seat = seatCar[1].replace(/\s/g, '');
-  else if (seatLt) seat = seatLt[1];
+  if (!isAdm){
+    const seatCl = full.match(/(经济舱|商务舱|头等舱|公务舱|一等座|二等座|软卧|硬卧|硬座|无座)/);
+    const seatCar = full.match(/(\d+\s*车\s*\d+[A-F]?)/);
+    const seatLt = full.match(/\b([A-F]\d{1,2})\b/);
+    if (seatCl) seat = seatCl[1];
+    else if (seatCar) seat = seatCar[1].replace(/\s/g, '');
+    else if (seatLt) seat = seatLt[1];
+  }
   if (seat) out.seat = seat;
 
   return out;
