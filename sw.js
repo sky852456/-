@@ -14,10 +14,14 @@
      · 换版本务必改 VERSION，否则老缓存不会失效（activate 里会清理非当前版本）。
    ============================================================================ */
 
-const VERSION = 'v1.7.3';
+const VERSION = 'v1.8.0';
 const SHELL_CACHE = `tp-shell-${VERSION}`;
 const CDN_CACHE   = `tp-cdn-${VERSION}`;
 const IMG_CACHE   = `tp-img-${VERSION}`;
+/* 离线地图瓦片缓存：与版本号解耦（瓦片数据本身与版本无关），由应用层主动预缓存，
+   SW 负责离线命中 + 在线回写 + 上限淘汰。名称固定，不被 activate 清理逻辑误删。 */
+const TILE_CACHE = 'travel-tiles-v1';
+const TILE_LIMIT = 5000;   // 瓦片上限，超出按 FIFO 近似 LRU 淘汰，防止无限膨胀
 
 /* 应用外壳：安装时就要缓存下来的文件（相对路径，随部署位置自动适配）
    注意：index.html 与 travel-planner.html 内容相同，两个都缓存，
@@ -49,18 +53,17 @@ const CDN_HOSTS = [
 
 /* 永远不缓存的实时接口 / 大文件
    注意：huggingface.co 是 WebLLM 模型权重的下载源（可达数 GB），
-   必须放行不缓存，否则会撑爆 Cache Storage 配额并拖垮浏览器。 */
+   必须放行不缓存，否则会撑爆 Cache Storage 配额并拖垮浏览器。
+   高德瓦片（webrd、webst 系列 .is.autonavi.com 域名）单独走「瓦片策略」处理（见下），不在本表。 */
 const NO_CACHE_HOSTS = [
   'huggingface.co',
   'hf.co',
   'restapi.amap.com',
-  'webrd0.is.autonavi.com',
-  'webrd01.is.autonavi.com',
-  'webrd02.is.autonavi.com',
-  'webrd03.is.autonavi.com',
-  'webrd04.is.autonavi.com',
   'tile.openstreetmap.org'
 ];
+
+/* 高德瓦片 host：离线预缓存的目标，断网时命中 travel-tiles-v1 即返回缓存 */
+const TILE_HOST_RE = /^(webrd|webst)\d*\.is\.autonavi\.com$/;
 
 /* ---------------------------------------------------------------- 安装 */
 self.addEventListener('install', (event) => {
@@ -148,6 +151,37 @@ async function swr(request, cacheName) {
   throw new Error('offline and not cached');
 }
 
+/** 瓦片缓存上限淘汰（FIFO 近似 LRU：Cache.keys 大致按插入顺序返回） */
+async function enforceTileLimit(cache, max) {
+  try {
+    const keys = await cache.keys();
+    if (keys.length > max) {
+      const stale = keys.slice(0, keys.length - max);
+      await Promise.all(stale.map((k) => cache.delete(k)));
+    }
+  } catch (e) { /* 配额不足等异常忽略，下次再清 */ }
+}
+
+/** 瓦片策略：命中 travel-tiles-v1 直接返回（断网可用）；
+ *  未命中走网络并回写（让在线浏览未预缓存区域也能逐渐被缓存），超限淘汰。 */
+async function tileStrategy(request) {
+  const cache = await caches.open(TILE_CACHE);
+  const hit = await cache.match(request);
+  if (hit) return hit;
+  try {
+    const res = await fetch(request);
+    // 只缓存有效的非 opaque 响应（opaque 无法读取状态码，避免脏数据挤占配额）
+    if (res && res.ok && res.type !== 'opaque') {
+      cache.put(request, res.clone()).catch(() => {});
+      enforceTileLimit(cache, TILE_LIMIT).catch(() => {});
+    }
+    return res;
+  } catch (e) {
+    // 离线且无缓存：返回错误，交由页面层降级提示（点位/连线仍可用）
+    return Response.error();
+  }
+}
+
 /* ---------------------------------------------------------------- 拦截 */
 self.addEventListener('fetch', (event) => {
   const req = event.request;
@@ -159,7 +193,13 @@ self.addEventListener('fetch', (event) => {
   // 非 http(s)（如 chrome-extension）直接放行
   if (!/^https?:$/.test(url.protocol)) return;
 
-  // ① 实时接口：不缓存
+  // ① 离线地图瓦片：命 travel-tiles-v1 即返回，否则在线回写（含上限淘汰）
+  if (TILE_HOST_RE.test(url.hostname)) {
+    event.respondWith(tileStrategy(req));
+    return;
+  }
+
+  // ② 实时接口：不缓存
   if (hostIn(url.hostname, NO_CACHE_HOSTS)) return;
 
   // ② 导航请求（打开页面）：优先用缓存的应用外壳，保证秒开 + 离线可开

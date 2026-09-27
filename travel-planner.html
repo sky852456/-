@@ -131,7 +131,7 @@
   --safe-b:env(safe-area-inset-bottom, 0px);
 }
 /* ==========================================================================
-   1.5 主题系统：7 套配色，切换 <html data-theme="key"> 即整站换色。
+   1.5 主题系统：16 套配色，切换 <html data-theme="key"> 即整站换色。
    与「行程长图」生成器共用同一份 THEMES 定义（见 JS），保证网页与图片一致。
    ========================================================================== */
 html[data-theme="mint"]{
@@ -176,6 +176,70 @@ html[data-theme="ink"]{
   --text:#242e38; --text-dim:#55646f; --text-mute:#9aa9b6;
   --brand:#5d7183; --brand-2:#9db2c2; --ok:#3f9c78; --warn:#c9932f; --danger:#cf6a63;
   --shadow:0 2px 12px rgba(60,80,95,.08); --shadow-hover:0 6px 18px rgba(60,80,95,.15);
+}
+/* ==== 高级感配色 5 套（主色×辅色，取自「世界上最高级的配色」组） ==== */
+/* 青瓷绿 × 月桂米：温润清雅，如青瓷般静谧治愈 */
+html[data-theme="celadon"]{
+  --bg:#f4faf7; --bg-soft:#e6f6f0; --panel-2:#f8fdfb; --line:#d9efe7;
+  --text:#1f5f55; --text-dim:#4a7268; --text-mute:#a3c4ba;
+  --brand:#3fa796; --brand-2:#8fd8c9;
+  --shadow:0 2px 12px rgba(63,167,150,.09); --shadow-hover:0 6px 18px rgba(63,167,150,.17);
+}
+/* 暮山蓝 × 晚桃粉：沉静深远，如山色入暮 */
+html[data-theme="dusk"]{
+  --bg:#f5f7fb; --bg-soft:#e9eef8; --panel-2:#f9fafd; --line:#dee5f2;
+  --text:#2c3a58; --text-dim:#4d5c7d; --text-mute:#a3aecb;
+  --brand:#56719f; --brand-2:#a8b8d6;
+  --shadow:0 2px 12px rgba(86,113,159,.09); --shadow-hover:0 6px 18px rgba(86,113,159,.17);
+}
+/* 石榴红 × 奶杏白：温暖优雅，优雅中不失热情 */
+html[data-theme="pomegranate"]{
+  --bg:#fdf6f5; --bg-soft:#fceff1; --panel-2:#fffbfa; --line:#f7e3e7;
+  --text:#7c2f3f; --text-dim:#85565f; --text-mute:#d0a9b1;
+  --brand:#c05d70; --brand-2:#eda9b6;
+  --shadow:0 2px 12px rgba(192,93,112,.10); --shadow-hover:0 6px 18px rgba(192,93,112,.18);
+}
+/* 松针绿 × 琥珀金：沉静清新，自然的高贵质感 */
+html[data-theme="pine"]{
+  --bg:#f4f9f5; --bg-soft:#e9f4ec; --panel-2:#f8fcf9; --line:#dfece2;
+  --text:#22423a; --text-dim:#4b6357; --text-mute:#9db8a8;
+  --brand:#45705d; --brand-2:#9cc4a9;
+  --shadow:0 2px 12px rgba(69,112,93,.09); --shadow-hover:0 6px 18px rgba(69,112,93,.17);
+}
+/* 雾霭紫 × 燕麦白：温柔神秘，自带高级滤镜感 */
+html[data-theme="mist"]{
+  --bg:#f9f8fd; --bg-soft:#f1edfa; --panel-2:#fcfbfe; --line:#e9e4f6;
+  --text:#4f4382; --text-dim:#6a5f8e; --text-mute:#b0a8ce;
+  --brand:#9484cf; --brand-2:#c9bff0;
+  --shadow:0 2px 12px rgba(148,132,207,.10); --shadow-hover:0 6px 18px rgba(148,132,207,.18);
+}
+/* 勃艮第红 × 牡蛎白：优雅深邃，如红酒般迷人有质感 */
+html[data-theme="burgundy"]{
+  --bg:#faf6f3; --bg-soft:#f3ebe6; --panel-2:#fcf9f7; --line:#e9dcd4;
+  --text:#4e2a36; --text-dim:#6d4a55; --text-mute:#c1a6ad;
+  --brand:#7d4254; --brand-2:#c9a3ad;
+  --shadow:0 2px 12px rgba(110,59,75,.10); --shadow-hover:0 6px 18px rgba(110,59,75,.18);
+}
+/* 琥珀棕 × 雾杏粉：沉稳温暖，时光沉淀的温柔 */
+html[data-theme="amber"]{
+  --bg:#faf5f1; --bg-soft:#f2e8e1; --panel-2:#fcf9f6; --line:#e7d9d0;
+  --text:#4e3c31; --text-dim:#6e5a4c; --text-mute:#c2ab9c;
+  --brand:#8e705f; --brand-2:#c4a89a;
+  --shadow:0 2px 12px rgba(142,112,95,.10); --shadow-hover:0 6px 18px rgba(142,112,95,.18);
+}
+/* 酪黄 × 远山青：如阳光般柔和明亮，又有远山的静谧 */
+html[data-theme="cream"]{
+  --bg:#f7faf8; --bg-soft:#edf4f0; --panel-2:#fbfdfc; --line:#dbe7e2;
+  --text:#3c5350; --text-dim:#5a7370; --text-mute:#a4bab5;
+  --brand:#5d7e7a; --brand-2:#a9c4bf;
+  --shadow:0 2px 12px rgba(93,126,122,.09); --shadow-hover:0 6px 18px rgba(93,126,122,.17);
+}
+/* 豆沙粉 × 墨青灰：温柔细腻，沉稳内敛的浪漫 */
+html[data-theme="ashrose"]{
+  --bg:#f9f6f7; --bg-soft:#f2eaee; --panel-2:#fcfafb; --line:#e7dce1;
+  --text:#31424d; --text-dim:#4f606b; --text-mute:#a2aeb6;
+  --brand:#b06e81; --brand-2:#dcaeba;
+  --shadow:0 2px 12px rgba(200,134,151,.10); --shadow-hover:0 6px 18px rgba(200,134,151,.18);
 }
 /* 主题选择器（顶部弹窗内） */
 .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px;}
@@ -1146,6 +1210,37 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
   .topbar .hide-sm{display:inline;font-size:11.5px;}
   .topbar .btn.small{padding:6px 8px;min-height:34px;gap:3px;}
 
+  /* ===================== P0 组件：进度条 / 行前自检 / 备份提醒 ===================== */
+  /* 瓦片预缓存进度条 */
+  .tilebar{ height:10px; border-radius:6px; background:var(--bg-soft); overflow:hidden; border:1px solid var(--line); }
+  .tilebar-in{ height:100%; width:0%; background:linear-gradient(90deg,var(--brand),var(--brand-2)); transition:width .15s; }
+  /* 行前自检清单 */
+  .sc-row{ display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .sc-row:last-of-type{ border-bottom:none; }
+  .sc-ico{ font-size:18px; line-height:1.4; flex-shrink:0; }
+  .sc-main{ flex:1; min-width:0; }
+  .sc-k{ font-size:13.5px; font-weight:700; color:var(--text); }
+  .sc-d{ font-size:12px; color:var(--text-mute); margin-top:2px; line-height:1.5; }
+  .sc-fix{ font-size:12px; color:var(--text-dim); background:var(--bg-soft); border:1px solid var(--line);
+    border-radius:9px; padding:8px 11px; margin-top:12px; line-height:1.6; }
+  .sc-verdict{ font-size:14px; font-weight:800; text-align:center; padding:11px; border-radius:11px; margin-top:12px; }
+  .sc-verdict:not(.on){ color:#9a7b2e; background:rgba(245,176,77,.14); }
+  .sc-verdict.on{ color:#1f8a5b; background:rgba(37,192,139,.14); }
+  /* 备份提醒横幅（非阻塞，底部悬浮） */
+  .backup-reminder{ position:fixed; left:50%; bottom:14px; transform:translateX(-50%) translateY(140%);
+    width:min(94vw,560px); display:flex; align-items:center; gap:9px; z-index:1200;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:11px 13px;
+    box-shadow:0 8px 28px rgba(0,0,0,.16); transition:transform .3s; }
+  .backup-reminder.show{ transform:translateX(-50%) translateY(0); }
+  .br-ico{ font-size:20px; }
+  .br-txt{ flex:1; min-width:0; font-size:12.5px; color:var(--text-dim); line-height:1.4; }
+  .br-txt b{ color:var(--text); }
+  .br-btn{ border:none; border-radius:9px; padding:7px 11px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .br-btn.primary{ background:var(--brand); color:#fff; }
+  .br-btn:not(.primary){ background:var(--bg-soft); color:var(--text-dim); }
+  .br-x{ border:none; background:transparent; color:var(--text-mute); font-size:20px; line-height:1; cursor:pointer; padding:2px 4px; }
+  @media (max-width:420px){ .br-txt{ font-size:11.5px; } .br-btn{ padding:6px 9px; } }
+
   .sidebar{
     border-right:none;border-bottom:1px solid var(--line);
     flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:9px 11px;gap:8px;
@@ -1398,6 +1493,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
       <div id="ovBody"><!-- JS 渲染 --></div>
       <div class="ov-foot">
         <button class="btn primary" id="ovExportPoster">🖼 导出行程长图</button>
+        <button class="btn" id="ovPrecache">📦 预缓存地图</button>
         <button class="btn" id="ovToEdit">✏️ 编辑模式</button>
       </div>
     </div>
@@ -1426,6 +1522,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
     <div class="side-title">行程目录</div>
     <div class="day-list" id="dayList"><!-- JS 渲染 --></div>
     <div class="side-tools">
+      <button class="btn ghost small" style="width:100%" id="btnSelfCheck" title="出发前逐项检查离线可用性">🧳 行前自检</button>
       <button class="btn ghost small" style="width:100%" id="btnWipe">🗑 清空全部数据</button>
     </div>
   </aside>
@@ -1457,6 +1554,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
         <button class="btn small primary" id="btnLocateAll" title="自动补全所有缺坐标的景点与酒店">📍 一键定位</button>
         <button class="btn small" id="btnLocateMe" title="获取并显示你当前所在位置（需授权定位）">🧭 我的位置</button>
         <button class="btn small" id="btnFitMap">🎯 全览路线</button>
+        <button class="btn small" id="btnPrecache" title="出发前预缓存沿途高德底图，无信号也能看地图">📦 预缓存地图</button>
       </div>
       <div id="map"></div>
       <div class="panel-body" style="padding-top:11px">
@@ -1858,6 +1956,13 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 /* ========================= 0. 常量定义 ========================= */
 const LS_KEY = 'TRAVEL_PLANNER_V1';          // localStorage 键名
 const LS_AMAP_KEY = LS_KEY + '_amapkey';     // 高德 Web服务 Key（仅存本机）
+const APP_VERSION = 'v1.8.0';                // 应用版本（与 sw.js VERSION 保持一致）
+const LS_LAST_EXPORT = LS_KEY + '_lastExport';        // 最近一次成功导出备份的时间戳
+const LS_BACKUP_REMIND = LS_KEY + '_backupRemind';    // 备份提醒节流：{ date, dismissed }
+const WX_SNAP_KEY = 'TP_WEATHER_SNAPSHOT';   // 天气离线快照（按坐标，LRU 最多 30）
+const TILE_CACHE_NAME = 'travel-tiles-v1';   // 离线瓦片缓存名（须与 sw.js 一致）
+const LS_DIRTY = LS_KEY + '_dirty';          // P0-4：数据自上次导出后是否变更（持久化）
+let dataDirty = false;                        // P0-4：自上次导出后数据是否变更
 
 /** 读取 / 保存高德 Key（存于 localStorage，不上传任何服务器） */
 function getAmapKey(){ return localStorage.getItem(LS_AMAP_KEY) || ''; }
@@ -2245,6 +2350,7 @@ function save(){
     if (window.TPSync && typeof window.TPSync.schedulePush === 'function') {
       try { window.TPSync.schedulePush('save'); } catch(e){}
     }
+    markDirty();                 // P0-4：数据有写入，标记为脏（待备份）
     return true;
   }catch(e){
     console.error(e);
@@ -2401,6 +2507,7 @@ function exportTrip(id){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
   toast('已导出「' + t.name + '」备份文件', 'ok', 4200);
+  setLastExport();   // P0-4：标记已备份，清除脏标记并记录时间
   renderHome();
 }
 
@@ -2588,6 +2695,30 @@ function weatherTip(code, tmin, tmax, pop, elev){
   return tips;
 }
 /** 取当天天气查询坐标：优先用当天首个有坐标的景点，否则用留宿城市名（无坐标） */
+/* ========================= 13.x 天气离线快照 =========================
+ * P0-3：每次成功拿到 Open-Meteo 数据，按坐标写入本地快照（最多保留 30 个坐标，LRU）。
+ * 联网失败 / 超时时，loadDayWeather 回退读取快照并标注「离线快照 · 更新于 X 小时前」，
+ * 让无信号路段仍能看到天气而非空白。SW 侧天气仍 Network Only，快照是纯应用层逻辑。 */
+function wxSnapPut(lat, lng, data){
+  try{
+    const list = JSON.parse(localStorage.getItem(WX_SNAP_KEY) || '[]');
+    const k = lat.toFixed(2) + ',' + lng.toFixed(2);
+    const item = { k, lat, lng, data, ts: Date.now() };
+    const i = list.findIndex(x => x.k === k);
+    if (i >= 0) list.splice(i, 1);
+    list.unshift(item);
+    while (list.length > 30) list.pop();
+    localStorage.setItem(WX_SNAP_KEY, JSON.stringify(list));
+  }catch(e){}
+}
+function wxSnapGet(lat, lng){
+  try{
+    const list = JSON.parse(localStorage.getItem(WX_SNAP_KEY) || '[]');
+    const k = lat.toFixed(2) + ',' + lng.toFixed(2);
+    return list.find(x => x.k === k) || null;
+  }catch(e){ return null; }
+}
+
 function weatherCoord(d){
   const s = (d.stops || []).find(x => isCoord(x.lat, x.lng));
   if (s) return { lat: Number(s.lat), lng: Number(s.lng), label: s.name };
@@ -2608,12 +2739,17 @@ async function fetchWeather(lat, lng, start, end){
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng
     + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max'
     + '&current=temperature_2m,weather_code&start_date=' + start + '&end_date=' + end + '&timezone=auto';
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const j = await r.json();
-  const data = { elevation: j.elevation, daily: j.daily };
-  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
-  return data;
+  const ctrl = new AbortController();                 // P0-3：8 秒超时，超时进入离线快照回退
+  const timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 8000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const data = { elevation: j.elevation, daily: j.daily };
+    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
+    wxSnapPut(lat, lng, data);                         // P0-3：写入离线快照
+    return data;
+  } finally { clearTimeout(timer); }
 }
 
 /** 地名 → 坐标（Open-Meteo 地理编码，免 key）；结果永久缓存到本机 */
@@ -2649,7 +2785,10 @@ async function fetchWeatherMulti(coords, start, end){
   const j = await r.json();
   const arr = Array.isArray(j) ? j : [j];
   const data = arr.map(o => ({ daily: o.daily, elevation: o.elevation }));
-  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+    coords.forEach((c, i) => { if (data[i]) wxSnapPut(c.lat, c.lng, data[i]); });   // P0-3：逐坐标写入快照
+  } catch(e){}
   return data;
 }
 /** 渲染当天天气卡（异步填充） */
@@ -2685,12 +2824,18 @@ async function loadDayWeather(d){
     renderWeatherCard(card, d, wc, data);
   } catch(e){
     if (!card.isConnected) return;
-    card.innerHTML = '<div class="wx-none">🌤 天气获取失败（' + (e.message||e) + '），点此重试</div>';
+    // P0-3：联网失败 / 超时 → 回退读取离线快照（48 小时内可用）
+    const snap = wxSnapGet(wc.lat, wc.lng);
+    if (snap && snap.data && snap.data.daily){
+      const ageH = Math.floor((Date.now() - snap.ts) / 3600000);
+      if (ageH <= 48){ renderWeatherCard(card, d, wc, snap.data, true, ageH); return; }
+    }
+    card.innerHTML = '<div class="wx-none">🌤 天气获取失败（' + esc(String((e && e.message) || e)) + '）。离线且无缓存快照，联网后将自动刷新。点此重试</div>';
     card.style.cursor = 'pointer';
     card.onclick = () => { card.onclick = null; card.style.cursor = ''; card.innerHTML = '<div class="wx-loading">🌤 重试中…</div>'; loadDayWeather(d); };
   }
 }
-function renderWeatherCard(card, d, wc, data){
+function renderWeatherCard(card, d, wc, data, offline, ageH){
   const dyn = data.daily || {};
   const times = dyn.time || [];
   const idx = times.indexOf(d.date);
@@ -2733,10 +2878,250 @@ function renderWeatherCard(card, d, wc, data){
     }).join('');
   }
   const tipHTML = tips.length ? `<div class="wx-tips">${tips.map(t => `<span class="wx-tip">${t}</span>`).join('')}</div>` : '';
-  card.className = 'wx-card';
-  card.innerHTML = todayHTML + tipHTML + (futureHTML ? `<div class="wx-future-wrap">${futureHTML}</div>` : '');
+  const offlineHTML = offline
+    ? `<div class="wx-offline">📴 离线快照 · 更新于 ${ageH != null && ageH > 0 ? ageH + ' 小时前' : '1 小时内'}（联网后自动刷新）</div>`
+    : '';
+  card.className = 'wx-card' + (offline ? ' wx-card-offline' : '');
+  card.innerHTML = offlineHTML + todayHTML + tipHTML + (futureHTML ? `<div class="wx-future-wrap">${futureHTML}</div>` : '');
   const tog = card.querySelector('[data-wx-toggle]');
   if (tog && futureHTML) tog.onclick = () => card.classList.toggle('wx-showfuture');
+}
+
+/* ========================= 13.x 地图瓦片离线预缓存 =========================
+ * P0-1：把当前旅行档案全部行程点（景点 + 酒店，GCJ-02 坐标）对应的高德瓦片，
+ * 按 z10 / z12 / z14 三档枚举后写入 Cache Storage（travel-tiles-v1），断网即可显示底图。
+ * 瓦片 URL 与地图显示层完全一致（固定 subdomain=1），避免随机 s 导致缓存不命中。 */
+const PRECACHE_RADII = { 10: 5000, 12: 2000, 14: 1000 };   // 各档覆盖半径（米）
+
+function tripTilePoints(){
+  const out = [], seen = {};
+  const t = TRIPS.find(x => x.id === activeTripId);
+  const data = (t && t.data) || DB || {};
+  const add = p => { if (p && isCoord(p.lat, p.lng)){ const k = (+p.lat).toFixed(3) + ',' + (+p.lng).toFixed(3); if (!seen[k]){ seen[k] = 1; out.push({ lat: +p.lat, lng: +p.lng }); } } };
+  (data.days || []).forEach(d => { (d.stops || []).forEach(add); });
+  (data.hotels || []).forEach(add);
+  return out;
+}
+
+/** 给定经纬与缩放级别，算出覆盖给定半径所需的瓦片范围（标准 slippy map 公式） */
+function tileRangeForPoint(lat, lng, z, radiusM){
+  const n = Math.pow(2, z);
+  const latRad = lat * Math.PI / 180;
+  const xt = (lng + 180) / 360 * n;
+  const yt = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+  const res = 156543.03392 * Math.cos(latRad) / n;          // 米 / 像素
+  const k = Math.max(1, Math.ceil(radiusM / (res * 256)));  // 半径方向瓦片数（至少 1）
+  const x0 = Math.floor(xt - k), x1 = Math.floor(xt + k);
+  const y0 = Math.floor(yt - k), y1 = Math.floor(yt + k);
+  const list = [];
+  for (let x = x0; x <= x1; x++){ for (let y = y0; y <= y1; y++){ if (x >= 0 && y >= 0 && x < n && y < n) list.push([x, y]); } }
+  return list;
+}
+
+/** 瓦片 URL：固定 subdomain=1，与地图显示层一致（style=7 纯底图 / style=8 含注记） */
+function tileUrl(style, z, x, y){
+  return 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=' + style + '&x=' + x + '&y=' + y + '&z=' + z;
+}
+
+/** 单张瓦片：命中缓存跳过，否则下载并写入；返回 { ok, bytes }（失败重试由调用方做 1 次） */
+async function fetchTileInto(url, cache){
+  try{
+    if (await cache.match(url)) return { ok: true, bytes: 0 };
+    const r = await fetch(url, { cache: 'reload' });
+    if (!r.ok) return { ok: false, bytes: 0 };
+    const buf = await r.arrayBuffer();
+    await cache.put(url, new Response(buf, { headers: { 'Content-Type': 'image/png' } }));
+    return { ok: true, bytes: buf.byteLength };
+  } catch(e){ return { ok: false, bytes: 0 }; }
+}
+
+/** 枚举 + 写入全部瓦片；onProgress(done, total, fail) 回调驱动进度条 */
+async function precacheTiles(opts){
+  const points = tripTilePoints();
+  if (!points.length) return { points: 0, tiles: 0, bytes: 0, fail: 0, empty: true };
+  const styles = (opts && opts.note) ? [7, 8] : [8];
+  const set = new Set();
+  points.forEach(p => [10, 12, 14].forEach(z =>
+    tileRangeForPoint(p.lat, p.lng, z, PRECACHE_RADII[z]).forEach(([x, y]) =>
+      styles.forEach(st => set.add(tileUrl(st, z, x, y))))));
+  const urls = Array.from(set);
+  const cache = await caches.open(TILE_CACHE_NAME).catch(() => null);
+  if (!cache) return { points: points.length, tiles: 0, bytes: 0, fail: 0, empty: false, noCacheApi: true };
+  let done = 0, fail = 0, bytes = 0;
+  const onProg = opts && opts.onProgress;
+  for (const url of urls){
+    let r = await fetchTileInto(url, cache);
+    if (!r.ok) r = await fetchTileInto(url, cache);          // 失败重试 1 次
+    if (r.ok){ done++; bytes += r.bytes; } else { fail++; }
+    if (onProg) onProg(done, urls.length, fail);
+  }
+  await enforceTileLimitClient(cache).catch(() => {});
+  return { points: points.length, tiles: done, total: urls.length, bytes, fail, empty: false };
+}
+async function enforceTileLimitClient(cache, max = 5000){
+  try{
+    const keys = await cache.keys();
+    if (keys.length > max) await Promise.all(keys.slice(0, keys.length - max).map(k => cache.delete(k)));
+  } catch(e){}
+}
+
+/** 「📦 预缓存沿途地图」弹窗：进度 + 结果 + 三态（空 / 进行中 / 完成或失败） */
+function openPrecacheDialog(){
+  const pts = tripTilePoints();
+  const noPts = !pts.length;
+  openModal('📦 预缓存沿途地图', `
+    <div style="font-size:13px;line-height:1.8;color:var(--text-dim)">
+      出发前在 <b>有网络</b> 时运行一次，会把当前行程所有景点 / 酒店附近的高德底图瓦片
+      （z10 / z12 / z14 三档）缓存到本机。进入无信号区域后，地图仍可拖动并显示底图。
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;color:var(--text-dim)">
+      <input type="checkbox" id="pcNote" ${noPts ? 'disabled' : ''} checked>
+      同时缓存注记层（街道名 / POI，体积略大）
+    </label>
+    <div id="pcProg" style="display:none;margin:10px 0">
+      <div class="tilebar"><div class="tilebar-in" id="pcBar"></div></div>
+      <div id="pcTxt" style="font-size:12px;color:var(--text-mute);margin-top:6px"></div>
+    </div>
+    <div id="pcResult" style="font-size:13px;color:var(--text-dim);margin-top:8px;line-height:1.7"></div>
+    <div id="pcErr" style="font-size:12.5px;color:var(--danger);margin-top:8px;display:none"></div>
+    ${noPts ? '<div style="font-size:12.5px;color:var(--warn);margin-top:8px">⚠️ 当前行程还没有任何带坐标的景点 / 酒店。先在「路线地图」补全坐标再来预缓存。</div>' : ''}
+  `, [
+    { text:'关闭', cls:'ghost', onClick: c => c() },
+    { text: noPts ? '无坐标可缓存' : '📦 开始预缓存', cls:'primary', onClick: async (c) => {
+        if (noPts){ c(); return; }
+        const btn = document.querySelector('#modalFoot .btn.primary');
+        const note = $('#pcNote') && $('#pcNote').checked;
+        const prog = $('#pcProg'), bar = $('#pcBar'), txt = $('#pcTxt'), res = $('#pcResult'), err = $('#pcErr');
+        if (btn){ btn.disabled = true; btn.textContent = '缓存中…'; }
+        prog.style.display = ''; res.textContent = ''; err.style.display = 'none';
+        const r = await precacheTiles({ note, onProgress: (d, t, f) => {
+          bar.style.width = (t ? Math.round(d / t * 100) : 0) + '%';
+          txt.textContent = `已缓存 ${d} / ${t} 张${f ? ' · 失败 ' + f + ' 张' : ''}`;
+        }});
+        if (btn){ btn.disabled = false; btn.textContent = '✅ 完成'; }
+        if (r.noCacheApi){ err.style.display = ''; err.textContent = '当前未启用离线缓存（请用 https 部署或已安装为 App 后再试）。'; return; }
+        if (r.fail){ err.style.display = ''; err.textContent = r.fail + ' 张瓦片获取失败（可能网络受限），其余已缓存，可重试。'; }
+        res.innerHTML = `✅ 完成：覆盖 <b>${r.points}</b> 个行程点，缓存 <b>${r.tiles}</b> 张瓦片（约 <b>${(r.bytes/1048576).toFixed(1)} MB</b>）。<br><span style="color:var(--text-mute);font-size:12px">断网后在「路线地图」拖动即可看到底图。</span>`;
+      } }
+  ]);
+}
+
+/* ========================= 13.x 行前离线自检（P0-2） ========================= */
+function getKBEntryCount(){
+  let spot = 0, city = 0, geo = 0;
+  try { spot = Array.isArray(SPOT_KB) ? SPOT_KB.length : 0; } catch(e){}
+  try { city = (typeof CITY_FOOD_KB !== 'undefined') ? Object.keys(CITY_FOOD_KB).length : 0; } catch(e){}
+  try { geo  = Array.isArray(GEO_BUILTIN) ? GEO_BUILTIN.length : 0; } catch(e){}
+  return { spot, city, geo };
+}
+
+/** 「🧳 行前自检」弹窗：逐项检测离线可用性；全绿显示「可以出发」 */
+async function openSelfCheck(){
+  const rows = [
+    { k:'① Service Worker 已激活',      ok:false, detail:'' },
+    { k:'② 离线地图瓦片',               ok:false, detail:'' },
+    { k:'③ 离线知识库',                 ok:true,  detail:'' },
+    { k:'④ 本地 AI 模型就绪',           ok:false, detail:'' },
+    { k:'⑤ 最近导出备份',               ok:false, detail:'' }
+  ];
+  // 同步可判定项
+  const swOk = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+  rows[0] = { ...rows[0], ok: swOk, detail: swOk ? '离线缓存已生效（断网可开）' : '未启用：请用 https 部署或安装为 App' };
+
+  const kb = getKBEntryCount();
+  rows[2] = { ...rows[2], detail: `景点 ${kb.spot} · 中转城市 ${kb.city} · 坐标点 ${kb.geo}` };
+
+  let aiReady = false;
+  try { aiReady = !!(window.TPAI && TPAI.status().ready && TPAI.status().mode !== 'api'); } catch(e){}
+  rows[3] = { ...rows[3], ok: aiReady, detail: aiReady ? '本地模型（Qwen2.5-3B）已就绪' : '未下载：去 AI 面板「本地模型」下载（约 1.5GB）' };
+
+  const lastExp = Number(localStorage.getItem(LS_LAST_EXPORT) || 0);
+  if (lastExp){
+    const days = Math.floor((Date.now() - lastExp) / 86400000);
+    rows[4] = { ...rows[4], ok: days <= 1, detail: days === 0 ? '今天已备份' : `${days} 天前（${new Date(lastExp).toLocaleDateString()}）` };
+  } else {
+    rows[4] = { ...rows[4], ok: false, detail: '⚠️ 从未导出备份，出发前请先导出' };
+  }
+
+  // 异步项：离线瓦片条数
+  let tileCount = 0;
+  try { if ('caches' in window){ const c = await caches.open(TILE_CACHE_NAME); tileCount = (await c.keys()).length; } } catch(e){}
+  rows[1] = { ...rows[1], ok: tileCount > 0, detail: tileCount > 0 ? `已缓存 ${tileCount} 张瓦片` : '为 0：请先「预缓存沿途地图」' };
+
+  const allGreen = rows.every(r => r.ok);
+  const body = `
+    <div style="font-size:13px;line-height:1.9;color:var(--text-dim);margin-bottom:10px">出发前逐项确认离线可用性，绿勾越多越稳妥：</div>
+    ${rows.map(r => `
+      <div class="sc-row">
+        <span class="sc-ico">${r.ok ? '✅' : '⚠️'}</span>
+        <div class="sc-main"><div class="sc-k">${esc(r.k)}</div><div class="sc-d">${esc(r.detail)}</div></div>
+      </div>`).join('')}
+    <div class="sc-fix">📌 语音记账依赖在线识别；无信号路段请改用「📷 账单截图识别（本地 OCR）」或手动记账。</div>
+    <div class="sc-verdict ${allGreen ? 'on' : ''}">${allGreen ? '🟢 可以出发 ✅' : '🟡 还有项目可完善（非阻断，按需处理）'}</div>`;
+  openModal('🧳 行前离线自检', body, [{ text:'完成', cls:'primary', onClick: c => c() }]);
+}
+
+/* ========================= 13.x 备份提醒（P0-4） ========================= */
+function markDirty(){ dataDirty = true; try { localStorage.setItem(LS_DIRTY, '1'); } catch(e){} }
+function markClean(){ dataDirty = false; try { localStorage.removeItem(LS_DIRTY); } catch(e){} }
+
+/** 写入「最近导出备份」时间戳并清除脏标记 */
+function setLastExport(){
+  try { localStorage.setItem(LS_LAST_EXPORT, String(Date.now())); } catch(e){}
+  markClean();
+}
+
+/** 今日日期字符串（本地，YYYY-MM-DD） */
+function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+/** 非阻塞备份提醒横幅：脏数据且距上次导出超 24h 时弹出，单日最多 1 次，可「今天不提醒」 */
+function maybeRemindBackup(){
+  if (!dataDirty) return;
+  const lastExp = Number(localStorage.getItem(LS_LAST_EXPORT) || 0);
+  const sinceExp = lastExp ? (Date.now() - lastExp) : Infinity;   // 从未导出视为超时
+  if (sinceExp < 24 * 3600 * 1000) return;                         // 24h 内备份过则不打扰
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(LS_BACKUP_REMIND) || '{}'); } catch(e){}
+  const td = todayStr();
+  if (state.date === td) return;                                   // 今天已提醒过（无论是否 dismiss）
+  if (state.dismissed === td) return;                              // 用户今天选择不提醒
+  showBackupReminder();
+}
+
+/** 底部非阻塞横幅（带「一键导出」与「今天不提醒」） */
+function showBackupReminder(){
+  if ($('#backupReminder')) return;
+  const el = document.createElement('div');
+  el.id = 'backupReminder';
+  el.className = 'backup-reminder';
+  el.innerHTML = `
+    <div class="br-ico">💾</div>
+    <div class="br-txt">已 <b>${Math.max(1, Math.floor((Date.now() - Number(localStorage.getItem(LS_LAST_EXPORT) || 0)) / 86400000))}</b> 天未备份行程数据，建议出发前导一份</div>
+    <button class="br-btn primary" id="brExport">⬇️ 一键导出</button>
+    <button class="br-btn" id="brLater">今天不提醒</button>
+    <button class="br-x" id="brClose">×</button>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('show'), 30);
+  $('#brExport').onclick = () => { removeBackupReminder(); closeBackupReminder(); exportJSON(); };
+  $('#brLater').onclick  = () => {
+    try { localStorage.setItem(LS_BACKUP_REMIND, JSON.stringify({ date: todayStr(), dismissed: true })); } catch(e){}
+    removeBackupReminder();
+  };
+  $('#brClose').onclick = () => {
+    try { localStorage.setItem(LS_BACKUP_REMIND, JSON.stringify({ date: todayStr(), dismissed: false })); } catch(e){}
+    removeBackupReminder();
+  };
+}
+function removeBackupReminder(){ const el = $('#backupReminder'); if (el) el.remove(); }
+function closeBackupReminder(){ removeBackupReminder(); }
+
+/** 每日 21:00 触发一次备份提醒检查（页面存活期间） */
+function scheduleBackupReminder(){
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(21, 0, 5, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);   // 已过 21:00 则排到明天
+  setTimeout(() => { maybeRemindBackup(); scheduleBackupReminder(); }, next - now);
 }
 
 function renderDayDetail(){
@@ -3103,8 +3488,8 @@ let pickMode = null;   // 非空时表示"等待用户点地图取坐标"
  *      做旅行路线示意完全够用；若需精确定位请手动微调坐标。
  */
 const TILE_SOURCES = [
-  { name:'高德地图',   url:'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', subdomains:'1234', maxZoom:19 },
-  { name:'高德卫星',   url:'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',                    subdomains:'1234', maxZoom:19 },
+  { name:'高德地图',   url:'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', subdomains:'1', maxZoom:19 },
+  { name:'高德卫星',   url:'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',                    subdomains:'1', maxZoom:19 },
   { name:'OpenStreetMap', url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom:19 }
 ];
 let tileIdx = 0;          // 当前使用的瓦片源下标
@@ -7302,6 +7687,7 @@ function exportJSON(){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
   toast('备份文件已导出，可在另一台设备用「导入备份」恢复', 'ok', 4200);
+  setLastExport();   // P0-4：标记已备份，清除脏标记并记录时间
 }
 
 /** 「导出 / 分享」菜单：下载文件 / 复制分享文本 / 生成二维码。tripId 不传则针对当前激活档案 */
@@ -7375,7 +7761,45 @@ const THEMES = {
   ink:    { name:'水墨墨玉', mood:'克制高级 · 人文/古城/博物馆',
     hero:['#2b333c','#46545f','#8397a8'], brand:'#5d7183', brand2:'#9db2c2',
     ink:'#242e38', body:'#55646f', mute:'#9aa9b6', line:'#e4eaee', soft:'#fbfcfd',
-    chip:'#eef2f5', chipLine:'#dde5eb', page:'#f6f8f9', accent:'#c9932f', key:'#c07d1a' }
+    chip:'#eef2f5', chipLine:'#dde5eb', page:'#f6f8f9', accent:'#c9932f', key:'#c07d1a' },
+  /* ---- 高级感配色 5 套（主色 × 辅色） ---- */
+  celadon: { name:'青瓷绿×月桂米', mood:'温润清雅 · 江南/古镇/禅意',
+    hero:['#3fa796','#6cc4b4','#cfeadd'], brand:'#3fa796', brand2:'#8fd8c9',
+    ink:'#1f5f55', body:'#4a7268', mute:'#a3c4ba', line:'#d9efe7', soft:'#f8fdfb',
+    chip:'#e6f6f0', chipLine:'#c8ecdf', page:'#f4faf7', accent:'#d9a441', key:'#2f8577' },
+  dusk:    { name:'暮山蓝×晚桃粉', mood:'沉静深远 · 山野/黄昏/湖泊',
+    hero:['#4a5f8c','#7287b0','#c3cde2'], brand:'#56719f', brand2:'#a8b8d6',
+    ink:'#2c3a58', body:'#4d5c7d', mute:'#a3aecb', line:'#dee5f2', soft:'#f9fafd',
+    chip:'#e9eef8', chipLine:'#d2dcf0', page:'#f5f7fb', accent:'#e0997e', key:'#3d5280' },
+  pomegranate:{ name:'石榴红×奶杏白', mood:'温暖优雅 · 人文/美食/老街',
+    hero:['#b5485d','#d1768a','#f2c9d1'], brand:'#c05d70', brand2:'#eda9b6',
+    ink:'#7c2f3f', body:'#85565f', mute:'#d0a9b1', line:'#f7e3e7', soft:'#fffbfa',
+    chip:'#fceff1', chipLine:'#f6d9de', page:'#fdf6f5', accent:'#c9932f', key:'#a03c4e' },
+  pine:    { name:'松针绿×琥珀金', mood:'自然高贵 · 森林/徒步/秋色',
+    hero:['#365b4c','#547d6a','#a7c8b0'], brand:'#45705d', brand2:'#9cc4a9',
+    ink:'#22423a', body:'#4b6357', mute:'#9db8a8', line:'#dfece2', soft:'#f8fcf9',
+    chip:'#e9f4ec', chipLine:'#d0e6d8', page:'#f4f9f5', accent:'#d9a441', key:'#31564a' },
+  mist:    { name:'雾霭紫×燕麦白', mood:'浪漫柔和 · 花田/日落/出片',
+    hero:['#8877c7','#a99bd8','#ddd6f2'], brand:'#9484cf', brand2:'#c9bff0',
+    ink:'#4f4382', body:'#6a5f8e', mute:'#b0a8ce', line:'#e9e4f6', soft:'#fcfbfe',
+    chip:'#f1edfa', chipLine:'#e0d9f3', page:'#f9f8fd', accent:'#c9932f', key:'#7463b8' },
+  /* ---- 高级感配色 4 套（主色 × 辅色 · 第 2 批） ---- */
+  burgundy:{ name:'勃艮第红×牡蛎白', mood:'优雅深邃 · 红酒/古城/夜游',
+    hero:['#6e3b4b','#8f5a6a','#c9a3ad'], brand:'#7d4254', brand2:'#c9a3ad',
+    ink:'#4e2a36', body:'#6d4a55', mute:'#c1a6ad', line:'#e9dcd4', soft:'#fcf9f7',
+    chip:'#f3ebe6', chipLine:'#e3d2c9', page:'#faf6f3', accent:'#c9932f', key:'#5d3140' },
+  amber:   { name:'琥珀棕×雾杏粉', mood:'沉稳温暖 · 咖啡/老街/秋日',
+    hero:['#8e705f','#ab8b78','#e0c6ba'], brand:'#8e705f', brand2:'#c4a89a',
+    ink:'#4e3c31', body:'#6e5a4c', mute:'#c2ab9c', line:'#e7d9d0', soft:'#fcf9f6',
+    chip:'#f2e8e1', chipLine:'#e4d4ca', page:'#faf5f1', accent:'#c9932f', key:'#6f5647' },
+  cream:   { name:'酪黄×远山青', mood:'明快恬静 · 田园/古镇/晴日',
+    hero:['#e7c86a','#e3cd90','#9dbfb8'], brand:'#5d7e7a', brand2:'#a9c4bf',
+    ink:'#3c5350', body:'#5a7370', mute:'#a4bab5', line:'#dbe7e2', soft:'#fbfdfc',
+    chip:'#edf4f0', chipLine:'#d5e5de', page:'#f7faf8', accent:'#d4a93f', key:'#4a6763' },
+  ashrose: { name:'豆沙粉×墨青灰', mood:'温柔细腻 · 赏花/约会/慢行',
+    hero:['#c88697','#d8a5b2','#8fa0aa'], brand:'#b06e81', brand2:'#dcaeba',
+    ink:'#31424d', body:'#4f606b', mute:'#a2aeb6', line:'#e7dce1', soft:'#fcfafb',
+    chip:'#f2eaee', chipLine:'#e2d3d9', page:'#f9f6f7', accent:'#c9932f', key:'#96566a' }
 };
 const THEME_KEY = LS_KEY + '_theme';
 let themeKey = localStorage.getItem(THEME_KEY) || 'ink';
@@ -8621,8 +9045,18 @@ async function gzipStr(s){
 async function gunzipBytes(bytes){
   if (typeof DecompressionStream === 'undefined') throw new Error('当前浏览器不支持解压');
   const ds = new DecompressionStream('gzip');
-  const w = ds.writable.getWriter(); w.write(bytes); w.close();
-  return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+  const w = ds.writable.getWriter(); w.write(bytes); w.close().catch(() => {});
+  // 用 reader 自行消费可读流并显式捕获错误：截断/损坏的 gzip 会让流抛错，
+  // 直接 await Response(arrayBuffer) 可能漏成未捕获 rejection，这里统一转成可读异常。
+  const reader = ds.readable.getReader();
+  const chunks = [];
+  try{
+    while (true){ const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
+  }catch(e){ throw new Error('解压失败（分享文本可能不完整或被破坏）'); }
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const buf = new Uint8Array(total);
+  let off = 0; chunks.forEach(c => { buf.set(c, off); off += c.length; });
+  return new TextDecoder().decode(buf);
 }
 
 /** 去掉图片字段（缩小体积，便于塞进二维码） */
@@ -8645,11 +9079,15 @@ async function encodeShare(obj){
   const gz = await gzipStr(JSON.stringify(obj));
   return gz ? 'G' + bytesToB64(gz) : 'B' + strToB64(JSON.stringify(obj));
 }
-async function decodeShare(data){
+async function decodeShare(data, mode){
+  const isPaste = (mode === 'paste');
   if (data == null) data = '';
   const raw = String(data).trim();
   if (!raw) throw new Error('内容为空');
+  // 不同入口给不同提示：扫码失真 vs 粘贴文本被截断，措辞要对得上，才好对症
   const SCAN_BAD = '二维码识别不完整或有失真，请离屏幕近一点、对准后重新扫码；也可改用「粘贴导入」或「导入备份文件」';
+  const PASTE_BAD = '分享文本不完整或有误：请在手机上「复制分享文本」后，到另一台设备长按文本框「全选」并完整粘贴（开头应是 G 或 B 的一长串字符）。若文本很长，发送工具可能截断了它——此时请改用「导出备份文件」发文件导入，最稳妥。';
+  const BAD = isPaste ? PASTE_BAD : SCAN_BAD;
   // 兼容：用户直接粘贴了「导出备份」生成的 JSON 文本（以 { 或 [ 开头）
   const head = raw[0];
   if (head === '{' || head === '['){
@@ -8659,23 +9097,23 @@ async function decodeShare(data){
   const tag = compact[0], body = compact.slice(1);
   if (tag === 'G'){
     const b = b64Sanitize(body);
-    // gzip 文件头是 1f 8b 08，对应 base64 开头恒为 "H4sI"；不匹配说明扫码出了坏字符
-    if (!b64Valid(b) || !b.startsWith('H4sI')) throw new Error(SCAN_BAD);
+    // gzip 文件头是 1f 8b 08，对应 base64 开头恒为 "H4sI"；不匹配说明扫码出了坏字符或被截断
+    if (!b64Valid(b) || !b.startsWith('H4sI')) throw new Error(BAD);
     try{ return JSON.parse(await gunzipBytes(b64ToBytes(b))); }
-    catch(e){ throw new Error(SCAN_BAD); }
+    catch(e){ throw new Error(BAD); }
   }
   if (tag === 'B'){
     const b = b64Sanitize(body);
-    if (!b64Valid(b)) throw new Error(SCAN_BAD);
+    if (!b64Valid(b)) throw new Error(BAD);
     try{ return JSON.parse(b64ToStr(b)); }
-    catch(e){ throw new Error(SCAN_BAD); }
+    catch(e){ throw new Error(BAD); }
   }
   // 兜底：当作纯 base64 JSON 再试一次
   try{ const b = b64Sanitize(compact); if (b64Valid(b)) return JSON.parse(b64ToStr(b)); }catch(_){}
   // 常见误扫：网址 / 微信 / 支付宝等其他二维码
   if (/^(https?:|weixin:|wxp:|alipay:|alipays:)/i.test(compact))
     throw new Error('扫到的是其他二维码（网址/微信/支付宝码），不是本工具生成的行程分享码');
-  throw new Error('不是有效的分享文本或备份内容');
+  throw new Error(isPaste ? '不是有效的分享文本（应以 G 或 B 开头的一长串字符，或 JSON 文本）' : '不是有效的分享文本或备份内容');
 }
 
 /** 生成分享二维码（电脑端） */
@@ -8866,7 +9304,9 @@ async function copyShareText(){
   const enc = await encodeShare(sharePayload(DB));
   const ok = await copyToClipboard(enc);
   if (ok){
-    toast(`已复制分享文本（${enc.length} 字符），把它发到另一台设备，再点「导入 → 从分享文本」粘贴即可同步`, 'ok', 5200);
+    const warn = enc.length > 2200
+      ? '（⚠️ 文本较长，若发送工具截断导致对方导入失败，请用「导出备份文件」发文件方式传输）' : '';
+    toast(`已复制分享文本（${enc.length} 字符）${warn}，把它发到另一台设备，再点「导入 → 粘贴文本」粘贴即可同步`, 'ok', 6500);
   }else{
     // 极端情况（连 execCommand 都不可用）：退化为文本框手动全选
     openModal('📋 复制分享文本', `
@@ -8888,18 +9328,32 @@ function pasteImport(targetTripId){
     </div>
     <textarea id="pasteArea" placeholder="在此粘贴分享文本…"
       style="width:100%;height:150px;margin-top:10px;font-family:monospace;font-size:12px;
-             border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical"></textarea>`,
+             border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical"></textarea>
+    <div id="pasteErr" style="display:none;margin-top:8px;font-size:12.5px;line-height:1.7;color:#d2493b;
+         background:rgba(210,73,59,.08);border:1px solid rgba(210,73,59,.25);border-radius:8px;padding:8px 10px"></div>`,
     [
       { text:'取消', cls:'ghost', onClick: c => c() },
+      { text:'改用文件导入', cls:'ghost', onClick: c => { c(); pickFileImport(targetTripId); } },
       { text:'粘贴并导入', cls:'primary', onClick: async c => {
         const v = ($('#pasteArea').value || '').trim();
         if (!v){ toast('请先粘贴分享文本', 'warn'); return; }
-        c();
-        await handleScanned(v, targetTripId);   // 复用解码 + 覆盖确认流程
+        await doPasteImport(v, targetTripId);   // 失败原地报错，不关闭弹窗，便于重粘
       } }
     ]
   );
   setTimeout(() => { const ta = $('#pasteArea'); if (ta) ta.focus(); }, 120);
+}
+async function doPasteImport(v, targetTripId){
+  try{
+    const obj = await decodeShare(v, 'paste');
+    closeModal();
+    if (targetTripId) confirmImportInto(targetTripId, obj);
+    else addTripFromData(obj);
+  }catch(e){
+    const hint = document.getElementById('pasteErr');
+    if (hint){ hint.style.display = 'block'; hint.textContent = '❌ ' + (e.message || e); }
+    toast('导入失败：' + (e.message || e), 'err', 6000);
+  }
 }
 
 /* ========================= 14. 图片处理 ========================= */
@@ -9427,6 +9881,10 @@ function bindGlobal(){
   );
   $('#btnWipe').onclick = doWipe;
   $('#btnWipe2').onclick = doWipe;
+  // P0-1 / P0-2 入口
+  $('#btnSelfCheck').onclick = () => openSelfCheck();
+  $('#btnPrecache').onclick = () => openPrecacheDialog();
+  $('#ovPrecache').onclick = () => openPrecacheDialog();
 
   // --- 行程模块 ---
   $('#btnAddStop').onclick = () => {
@@ -9623,6 +10081,15 @@ function bindGlobal(){
 (function boot(){
   applyTheme(themeKey);     // 先上色，避免闪白
   load();
+  // P0-4：恢复脏标记（跨会话记得「上次编辑后还没备份」）
+  dataDirty = (localStorage.getItem(LS_DIRTY) === '1');
+  // 升级前自动备份：旧数据首次进入 v1.8.0 时复制一份快照，便于无损回滚
+  try {
+    if (!localStorage.getItem('TP_UPGRADE_BACKUP_v1.8.0')) {
+      const cur = localStorage.getItem(LS_KEY);
+      if (cur) localStorage.setItem('TP_UPGRADE_BACKUP_v1.8.0', cur);
+    }
+  } catch (e) {}
   if (fixCoordSwap(DB)) save();   // 修复历史数据里写反的经纬度（否则天气/地图都会出错）
   initMap();
   bindGlobal();
@@ -9636,6 +10103,8 @@ function bindGlobal(){
     localStorage.setItem(LS_KEY + '_seen', '1');
     if (!TRIPS.length) setTimeout(() => toast('点「＋ 新建旅行」开始规划你的第一次出行', 'ok', 5000), 900);
   }
+  maybeRemindBackup();        // P0-4：打开时若脏数据且距上次导出超 24h，非阻塞提醒
+  scheduleBackupReminder();   // P0-4：每日 21:00（页面存活期间）再检查一次
   console.log('%c行程管理已就绪', 'color:#2bb8c4;font-weight:bold',
     '\n数据保存在 localStorage["' + LS_KEY + '"]（多份旅行档案），导出备份可跨设备迁移。');
 })();
@@ -10017,6 +10486,9 @@ function bindGlobal(){
   .wx-fico{ font-size:17px; width:22px; text-align:center; }
   .wx-flb{ flex:1; min-width:0; }
   .wx-ftemp{ color:var(--text-dim); }
+  .wx-offline{ font-size:11.5px; color:#9a7b2e; background:rgba(245,176,77,.16);
+    border-radius:8px; padding:5px 9px; margin-bottom:8px; line-height:1.5; }
+  .wx-card-offline{ opacity:.96; }
 </style>
 
 <div id="pwaInstallBar">
