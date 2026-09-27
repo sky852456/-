@@ -1580,6 +1580,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
         <h2>🚄 交通票务</h2>
         <span class="chip gray" id="transportSummary">—</span>
         <div class="grow"></div>
+        <button class="btn small" id="btnOCRTicket" title="截图订单/登机牌，本地识别班次/时间/出发到达/票价并预填">📷 票务截图识别</button>
         <button class="btn small primary" id="btnAddTicket">➕ 录入票务</button>
       </div>
       <div class="panel-body">
@@ -1956,7 +1957,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 /* ========================= 0. 常量定义 ========================= */
 const LS_KEY = 'TRAVEL_PLANNER_V1';          // localStorage 键名
 const LS_AMAP_KEY = LS_KEY + '_amapkey';     // 高德 Web服务 Key（仅存本机）
-const APP_VERSION = 'v1.8.0';                // 应用版本（与 sw.js VERSION 保持一致）
+const APP_VERSION = 'v1.8.1';                // 应用版本（与 sw.js VERSION 保持一致）
 const LS_LAST_EXPORT = LS_KEY + '_lastExport';        // 最近一次成功导出备份的时间戳
 const LS_BACKUP_REMIND = LS_KEY + '_backupRemind';    // 备份提醒节流：{ date, dismissed }
 const WX_SNAP_KEY = 'TP_WEATHER_SNAPSHOT';   // 天气离线快照（按坐标，LRU 最多 30）
@@ -3925,9 +3926,9 @@ function renderTickets(){
   });
 }
 
-function ticketForm(ticketId = null){
+function ticketForm(ticketId = null, preset = null){
   const t = ticketId ? DB.tickets.find(x => x.id === ticketId)
-                     : { type:'高铁', no:'', date: activeDay()?.date || todayISO(), depTime:'', arrTime:'', from:'', to:'', price:'', seat:'', note:'' };
+                     : Object.assign({ type:'高铁', no:'', date: activeDay()?.date || todayISO(), depTime:'', arrTime:'', from:'', to:'', price:'', seat:'', note:'' }, preset || {});
   const body = `
     <div class="grid-form">
       <div class="field"><label>类型</label>
@@ -4354,6 +4355,17 @@ function normOCR(s){
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
+/** 票务 OCR 专用归一化：在 normOCR 基础上，进一步压缩数字串 / 时间冒号 / ¥ 两侧的空格
+ *  （Tesseract 常把「2026」「¥880」「08:30」切成带空格的碎片，会直接导致日期/票价/车次解析失败） */
+function normTicketOCR(s){
+  return String(s || '')
+    .replace(/([\u4e00-\u9fa5])[ \t]+(?=[\u4e00-\u9fa5])/g, '$1')  // 中文字之间空格（保留换行）
+    .replace(/(\d)[ \t]+(?=\d)/g, '$1')                            // 数字之间空格（2 0 2 6 → 2026，保留换行）
+    .replace(/[ \t]*([:：])[ \t]*(?=\d)/g, '$1')                   // 时间冒号两侧空格（0 8 : 3 0 → 08:30）
+    .replace(/[¥￥][ \t]*(?=\d)/g, '¥')                            // ¥ 后空格（¥ 8 8 0 → ¥880）
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
 
 /** 根据商户名猜分类 */
 function guessCat(name){
@@ -4404,6 +4416,139 @@ function pickOCRItems(items, imgDataURL){
         if (budget > 0 && total > budget) toast(`⚠️ 已超出预算 ${fmtMoney(total - budget)}`, 'err', 4500);
       }}
   ]);
+}
+
+/**
+ * 票务截图 OCR（P1-3 提前实现）：复用 Tesseract 本地识别，
+ * 解析班次/航班号、日期、起降时间、出发到达地、票价、座位舱位，预填票务表单。
+ */
+function ticketOcrEntry(){
+  if (typeof Tesseract === 'undefined'){
+    return toast('OCR 引擎未加载（需能访问 cdn.jsdelivr.net），请改用「➕ 录入票务」手动填', 'err', 5000);
+  }
+  openModal('📷 票务截图识别', `
+    <div style="font-size:13px;color:var(--text-dim);line-height:1.8">
+      支持 12306 / 携程 / 航旅纵横 / 航司 App 的订单或登机牌截图。识别在本机浏览器完成，图片不上传。<br>
+      <span style="color:var(--text-mute)">（OCR 为本地识别，地名/站名可能有偏差，填完请核对一遍再添加）</span>
+    </div>
+    <div class="field"><label>选择票务截图</label>
+      <input type="file" accept="image/*" id="tk-ocr-file" class="input" style="padding:6px"></div>
+    <div class="progress" id="tk-ocr-bar" style="display:none"><i></i></div>
+    <div id="tk-ocr-status" style="font-size:12.5px;color:var(--text-dim)"></div>
+    <pre id="tk-ocr-raw" style="display:none;max-height:120px;overflow:auto;background:var(--bg-soft);
+      border:1px solid var(--line);border-radius:10px;padding:9px;font-size:11.5px;color:var(--text-mute);white-space:pre-wrap"></pre>`,
+  [{ text:'关闭', cls:'ghost', onClick: c => c() }],
+  () => {
+    $('#tk-ocr-file').onchange = async (ev) => {
+      const f = ev.target.files[0]; if (!f) return;
+      const bar = $('#tk-ocr-bar'), st = $('#tk-ocr-status');
+      bar.style.display = ''; st.textContent = '正在识别，请稍候…';
+      try{
+        const dataURL = await fileToCompressedDataURL(f, 1400, .85);
+        const res = await Tesseract.recognize(dataURL, 'chi_sim+eng', {
+          logger: (m) => {
+            if (m.status === 'recognizing text'){
+              bar.querySelector('i').style.width = Math.round((m.progress || 0) * 100) + '%';
+              st.textContent = `识别中… ${Math.round((m.progress||0)*100)}%`;
+            } else st.textContent = '正在加载识别模型…';
+          }
+        });
+        const text = res.data.text || '';
+        $('#tk-ocr-raw').style.display = ''; $('#tk-ocr-raw').textContent = text.slice(0, 1200);
+        const p = parseTicketText(text);
+        bar.querySelector('i').style.width = '100%';
+        const filled = Object.keys(p).filter(k => p[k] !== '' && p[k] != null && String(p[k]).trim() !== '');
+        st.textContent = filled.length ? `识别出 ${filled.length} 项，已预填，请核对` : '未能识别关键信息，请手动录入';
+        if (!filled.length){ return toast('未能从截图中识别到票务信息，请手动录入', 'warn', 4000); }
+        closeModal();
+        ticketForm(null, p);   // 打开预填好的表单，用户确认后添加
+        toast('已预填，请核对后点「添加」', 'ok', 3000);
+      }catch(err){
+        console.error(err);
+        st.textContent = '识别失败：' + err.message;
+        toast('OCR 识别失败，请重试或手动录入', 'err', 4000);
+      }
+    };
+  });
+}
+
+/**
+ * 从票务 OCR 文本里尽力解析出结构化字段；识别不到的留空，由用户补。
+ * 返回 {type,no,date,depTime,arrTime,from,to,price,seat}，只含识别到的键。
+ */
+function parseTicketText(text){
+  const raw = String(text || '');
+  const full = normTicketOCR(raw);
+  const out = {};
+  const p2 = (n) => String(n).padStart(2, '0');
+
+  // 1) 班次 / 航班号
+  let no = null;
+  const kwNo = full.match(/(?:车次|航班号?|航班|列车号|票号|flight\s*no\.?|no\.?)\s*[:：]?\s*([A-Za-z0-9]{2,10})/i);
+  if (kwNo) no = kwNo[1].toUpperCase();
+  if (!no){ const t = full.match(/\b([GCDZTKLY])\s*(\d{1,5})\b/); if (t) no = (t[1] + t[2]).toUpperCase(); }
+  if (!no){ const fl = full.match(/\b([A-Za-z]{2})\s*(\d{2,4})\b/); if (fl) no = (fl[1] + fl[2]).toUpperCase(); }
+  if (no) out.no = no;
+
+  // 2) 类型推断
+  let type = '其他';
+  if (/(高铁|动车|城际|复兴号|和谐号)/i.test(full) && !/(航班|飞机|航空)/i.test(full)) type = '高铁';
+  else if (/(航班|飞机|航空|登机|boarding|airline)/i.test(full) || (no && /^[A-Z]{2}\d/.test(no))) type = '航班';
+  else if (/(火车|列车|普快|特快|直达)/i.test(full) || (no && /^[ZTKLY]\d/.test(no))) type = '火车';
+  else if (/(大巴|客运|汽车|长途)/i.test(full)) type = '大巴';
+  else if (/(船|轮渡|游轮|ferry)/i.test(full)) type = '轮渡';
+  else if (no && /^[GCDZTKLY]\d/.test(no)) type = '高铁';
+  out.type = type;
+
+  // 3) 日期
+  let date = null;
+  const d1 = full.match(/(\d{4})\s*[-/年.]\s*(\d{1,2})\s*[-/月.]\s*(\d{1,2})\s*日?/);
+  if (d1) date = `${d1[1]}-${p2(d1[2])}-${p2(d1[3])}`;
+  else { const d2 = full.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/); if (d2) date = `${new Date().getFullYear()}-${p2(d2[1])}-${p2(d2[2])}`; }
+  if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) out.date = date;
+
+  // 4) 出发 / 到达时间
+  const times = (full.match(/\d{1,2}\s*[:：]\s*\d{2}/g) || []).map(s => s.replace(/\s/g, '').replace('：', ':'));
+  const depMt = full.match(/(?:出发|起飞|始发|离站|开车)\s*[:：]?\s*(\d{1,2}\s*[:：]\s*\d{2})/);
+  const arrMt = full.match(/(?:到达|抵达|落地|终到|到站)\s*[:：]?\s*(\d{1,2}\s*[:：]\s*\d{2})/);
+  if (depMt) out.depTime = depMt[1].replace(/\s/g, '').replace('：', ':');
+  if (arrMt) out.arrTime = arrMt[1].replace(/\s/g, '').replace('：', ':');
+  if (!out.depTime && times[0]) out.depTime = times[0];
+  if (!out.arrTime && times[1]) out.arrTime = times[1];
+
+  // 5) 出发地 / 到达地（显式关键词优先，其次才是箭头/「到」分隔；「到」需排除「到达/抵达」）
+  const cleanPlace = (s) => s ? s.replace(/^(出发|始发|起飞|起飞机场?|出发站|到达|抵达|终到|落地|目的)/, '') : s;
+  let from = '', to = '';
+  const depCity = full.match(/(?:出发|始发|起飞机场?|出发站)\s*[:：]?\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
+  const arrCity = full.match(/(?:到达|抵达|终到|目的|落地)\s*[:：]?\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
+  if (depCity) from = cleanPlace(depCity[1]);
+  if (arrCity) to = cleanPlace(arrCity[1]);
+  if (!from || !to){
+    const route = full.match(/([\u4e00-\u9fa5]{2,8}(?:站|机场)?)\s*(?:→|➜|->|—|至|到(?!达|抵))\s*([\u4e00-\u9fa5]{2,8}(?:站|机场)?)/);
+    if (route){ if (!from) from = cleanPlace(route[1]); if (!to) to = cleanPlace(route[2]); }
+  }
+  if (from) out.from = from;
+  if (to) out.to = to;
+
+  // 6) 票价
+  let price = null;
+  const pr = full.match(/(?:票价|金额|实付|应付|费用|总价)\s*[:：]?\s*[¥￥]?\s*(\d+(?:\.\d{1,2})?)/)
+          || full.match(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/)
+          || full.match(/(\d+(?:\.\d{1,2})?)\s*元/);
+  if (pr){ const v = Number(pr[1]); if (v > 0 && v < 1000000) price = v; }
+  if (price != null) out.price = price;
+
+  // 7) 座位 / 舱位
+  let seat = null;
+  const seatCl = full.match(/(经济舱|商务舱|头等舱|公务舱|一等座|二等座|软卧|硬卧|硬座|无座)/);
+  const seatCar = full.match(/(\d+\s*车\s*\d+[A-F]?)/);
+  const seatLt = full.match(/\b([A-F]\d{1,2})\b/);
+  if (seatCl) seat = seatCl[1];
+  else if (seatCar) seat = seatCar[1].replace(/\s/g, '');
+  else if (seatLt) seat = seatLt[1];
+  if (seat) out.seat = seat;
+
+  return out;
 }
 
 /* ========================= 10.5 酒店住宿模块 ========================= */
@@ -9902,6 +10047,7 @@ function bindGlobal(){
 
   // --- 交通 ---
   $('#btnAddTicket').onclick = () => ticketForm(null);
+  $('#btnOCRTicket').onclick = ticketOcrEntry;
 
   // --- 酒店住宿 ---
   $('#btnAddHotel').onclick = () => hotelForm(null);
