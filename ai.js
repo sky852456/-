@@ -334,7 +334,7 @@
   }
 
   /** 流式调用云端接口；不支持流式时自动降级为一次性返回 */
-  async function generateCloud(system, user, onToken, allowSearch) {
+  async function generateCloud(system, user, onToken, allowSearch, maxTokens) {
     if (!apiReady()) {
       var ps = providerOf();
       setStatus('还没填 API Key。请在「云端接口」里填入 ' + ps.name + ' 的 Key' + (ps.keyUrl ? '（点下方链接可申请）' : ''), 'err');
@@ -349,7 +349,7 @@
         { role: 'user', content: user }
       ],
       temperature: 0.7,
-      max_tokens: search ? 900 : 600,
+      max_tokens: maxTokens || (search ? 900 : 600),
       stream: true
     };
     if (search) {
@@ -427,8 +427,8 @@
     }
   }
 
-  async function generate(system, user, onToken, allowSearch) {
-    if (cfg.mode === 'api') return generateCloud(system, user, onToken, allowSearch);
+  async function generate(system, user, onToken, allowSearch, maxTokens) {
+    if (cfg.mode === 'api') return generateCloud(system, user, onToken, allowSearch, maxTokens);
 
     // 本地模式
     var eng = await getEngine();
@@ -440,7 +440,7 @@
         ],
         stream: true,
         temperature: 0.7,
-        max_tokens: 512
+        max_tokens: maxTokens || 512
       });
       // 兼容 WebLLM 的异步迭代器流式返回
       var out = '';
@@ -917,6 +917,9 @@
     chat: runChat,
     chip: chipQuestion,
     adopt: adopt,
+    /* 编程接口：给应用内其他功能直接调用生成管道（云端/本地自动路由）。
+       ask(system, user, onToken, allowSearch, maxTokens) → Promise<全文> */
+    ask: generate,
     getEngine: getEngine,
     status: function () {
       return {

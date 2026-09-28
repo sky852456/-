@@ -1035,6 +1035,49 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 .tl-sub{display:block;font-size:12px;color:var(--text-mute);margin-top:1px;}
 .tl-gap .tl-time{color:var(--text-mute);font-weight:600;}
 .tl-gap .tl-txt{color:var(--text-mute);font-size:12.5px;}
+/* ---- 目的地 AI 攻略 ---- */
+@keyframes gdSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.gd-form-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+.gd-chip{
+  padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);
+  font-size:12.5px;color:var(--text-dim);cursor:pointer;
+}
+.gd-chip:hover{border-color:var(--brand);color:var(--brand);}
+.gd-chip-ab{background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.35);color:#5b54d6;}
+.gd-chip-ab:hover{border-color:#5b54d6;}
+.gd-scroll{max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch;padding-right:2px;}
+.gd-head{
+  padding:13px 15px;border-radius:13px;margin-bottom:11px;
+  background:linear-gradient(135deg,rgba(46,139,110,.14),rgba(99,102,241,.10));
+  border:1px solid rgba(46,139,110,.28);
+}
+.gd-title{font-size:16px;font-weight:800;color:var(--text);}
+.gd-season{display:inline-block;margin-top:7px;padding:2px 9px;border-radius:999px;background:rgba(99,102,241,.14);font-size:11.5px;color:#5b54d6;font-weight:700;}
+.gd-scenery{margin-top:9px;font-size:13px;line-height:1.85;color:var(--text-dim);}
+.gd-why{
+  margin-top:9px;padding:8px 11px;border-radius:9px;
+  background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);
+  font-size:12.5px;line-height:1.75;color:#a35b06;
+}
+.gd-day{display:flex;gap:11px;padding:11px 0;border-top:1px dashed var(--line);}
+.gd-thumb{
+  width:92px;height:70px;border-radius:10px;overflow:hidden;flex:none;
+  background:linear-gradient(135deg,#bcd4c6,#7fa8c9);
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+}
+.gd-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.gd-daybody{min-width:0;}
+.gd-daytitle{font-size:14px;font-weight:800;color:var(--text);}
+.gd-daydesc{font-size:13px;line-height:1.8;color:var(--text-dim);margin-top:3px;}
+.gd-spots{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.gd-spot{padding:2px 8px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line);font-size:11.5px;color:var(--text-mute);}
+.gd-budget{padding:12px 14px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);margin-top:11px;}
+.gd-sech{font-size:12.5px;font-weight:800;color:var(--text-dim);margin-bottom:7px;letter-spacing:.5px;}
+.gd-brow{display:flex;justify-content:space-between;gap:12px;padding:4.5px 0;font-size:13.5px;color:var(--text-dim);}
+.gd-brow b{color:var(--text);font-variant-numeric:tabular-nums;}
+.gd-note{margin-top:8px;font-size:12px;color:var(--text-mute);line-height:1.7;}
+.gd-tips{margin:0;padding-left:18px;font-size:13px;line-height:1.9;color:var(--text-dim);}
+.gd-src{margin-top:10px;font-size:11px;color:var(--text-mute);line-height:1.7;}
 .day-city{
   margin-bottom:12px;padding:13px 15px;border-radius:13px;
   background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(245,158,11,.035));
@@ -1494,7 +1537,10 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
     <div class="trip-home-inner">
       <div class="th-head">
         <div class="th-title">🧭 我的旅行</div>
-        <button class="btn primary" id="btnNewTrip">＋ 新建旅行</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" id="btnGuide">✨ AI 攻略</button>
+          <button class="btn primary" id="btnNewTrip">＋ 新建旅行</button>
+        </div>
       </div>
       <div class="th-sub">点开任意卡片，进入该次旅行的完整规划（行程 / 地图 / 票务 / 酒店 / 记账 / 手账）。返回首页点顶部「🏠」。</div>
       <div id="tripGrid" class="trip-grid"></div>
@@ -1977,7 +2023,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5;}
 /* ========================= 0. 常量定义 ========================= */
 const LS_KEY = 'TRAVEL_PLANNER_V1';          // localStorage 键名
 const LS_AMAP_KEY = LS_KEY + '_amapkey';     // 高德 Web服务 Key（仅存本机）
-const APP_VERSION = 'v1.8.2';                // 应用版本（与 sw.js VERSION 保持一致）
+const APP_VERSION = 'v1.8.4';                // 应用版本（与 sw.js VERSION 保持一致）
 const LS_LAST_EXPORT = LS_KEY + '_lastExport';        // 最近一次成功导出备份的时间戳
 const LS_BACKUP_REMIND = LS_KEY + '_backupRemind';    // 备份提醒节流：{ date, dismissed }
 const WX_SNAP_KEY = 'TP_WEATHER_SNAPSHOT';   // 天气离线快照（按坐标，LRU 最多 30）
@@ -2449,6 +2495,231 @@ function renderHome(){
   $$('#tripGrid [data-import]').forEach(b => b.onclick = e => { e.stopPropagation(); importMenu(b.dataset.import); });
   $$('#tripGrid [data-del]').forEach(b => b.onclick = e => { e.stopPropagation(); deleteTrip(b.dataset.del); });
   $$('#tripGrid .trip-card').forEach(c => c.onclick = () => openTrip(c.dataset.trip));
+}
+
+/* ========================= 2.5 目的地 AI 攻略（主页） ========================= */
+function guideSystemPrompt(){
+  return [
+    '你是一位资深旅行攻略作者，国内外目的地都擅长（海外目的地同样给出签证/交通/预算等实用信息）。',
+    '根据用户给定的目的地、天数、人数、出行方式与补充要求，产出一份实用、顺路的中文旅行攻略。',
+    '若用户【没有指定目的地】：你直接推荐最合适的目的地（结合用户提到的出行时间节点，如五一/十一/春节/淡旺季），并在 why 字段用 60 字内说明推荐理由；天数也由你按合理节奏规划（4-10 天）。若指定了目的地，why 返回空字符串。',
+    '只输出一个 JSON 对象：不要 markdown 代码块、不要任何解释文字。结构如下（所有字段都要有，没把握的数值给保守区间）：',
+    '{"title":"攻略标题","destination":"目的地","why":"推荐理由（未指定目的地时必填，否则空串）","bestSeason":"最佳出行季节","scenery":"120字内风景总述：这条线最标志性的景观与体验","days":[{"day":"Day 1-2","place":"城市/段落","desc":"60字内：去哪、玩什么、门票/价格、吃什么","spots":["景点1","景点2"],"imageQuery":"搜图关键词，海外目的地用英文，如：Kyoto Fushimi Inari"}],"budget":[{"item":"交通","amount":"约3000元/人（海外含国际段大交通）"},{"item":"住宿","amount":"…"},{"item":"餐饮","amount":"…"},{"item":"门票","amount":"…"},{"item":"签证（海外）","amount":"…"},{"item":"总计","amount":"…"}],"budgetNote":"一句话预算提醒（旺季/节假日/汇率波动等）","tips":["提示1","提示2","提示3","提示4","提示5"]}',
+    '要求：行程按地理顺路安排（不走回头路）；days 覆盖全部天数、相近地点可合并为同一段；价格给大致区间；海外攻略额外考虑签证办理时长、国际机票预订窗口；不要编造没把握的具体店名；imageQuery 简短（城市 + 标志景观，海外用英文）。'
+  ].join('\n');
+}
+function guideUserPrompt(o){
+  const days = o.days ? o.days + ' 天' : '由你推荐合理天数';
+  const people = o.people ? o.people + ' 人' : '由你推荐';
+  return `目的地：${o.dest || '未指定 —— 请结合出行时间直接推荐最合适的目的地'}\n天数：${days}\n人数：${people}\n出行方式：${o.mode || '不限'}${o.extra ? '\n补充要求/出行时间：' + o.extra : ''}\n请生成攻略 JSON。`;
+}
+
+/** 从 AI 回复里抠出 JSON（容忍 ```json 包裹、前后废话） */
+function extractJSON(text){
+  const s = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```\s*$/, '').trim();
+  const m = s.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch(e){ return null; }
+}
+
+/** Wikimedia Commons 免费图库搜图（免 key；5s 超时，失败返回空串走 emoji 兜底） */
+async function guideWikiImage(q, w = 640){
+  try{
+    const api = 'https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='
+      + encodeURIComponent('filetype:bitmap ' + q)
+      + '&gsrlimit=1&gsrnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=' + w + '&format=json&origin=*';
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 5000);
+    const r = await fetch(api, { signal: ctl.signal });
+    clearTimeout(t);
+    const j = await r.json();
+    const pages = j && j.query && j.query.pages;
+    if (pages){
+      const p = Object.values(pages)[0];
+      const info = p && p.imageinfo && p.imageinfo[0];
+      if (info && info.thumburl) return info.thumburl;
+    }
+  }catch(e){ /* 被墙/超时：静默降级 */ }
+  return '';
+}
+
+/** 攻略 → 纯文本（复制分享用） */
+function guideToText(g){
+  const L = [];
+  L.push(`🗺️ ${g.title || g.destination + ' 攻略'}`);
+  if (g.why) L.push(`💡 推荐理由：${g.why}`);
+  if (g.bestSeason) L.push(`📅 最佳季节：${g.bestSeason}`);
+  if (g.scenery) L.push(`\n🏞 风景印象：${g.scenery}`);
+  L.push('\n—— 行程框架 ——');
+  (g.days || []).forEach(d => L.push(`${d.day || ''} ${d.place || ''}：${d.desc || ''}`));
+  L.push('\n—— 预算参考 ——');
+  (g.budget || []).forEach(b => L.push(`${b.item}：${b.amount}`));
+  if (g.budgetNote) L.push(`💡 ${g.budgetNote}`);
+  if ((g.tips || []).length) L.push('\n—— 实用提示 ——\n' + g.tips.map(t => '· ' + t).join('\n'));
+  return L.join('\n');
+}
+
+/** 攻略 → 新旅行档案数据（日期从今天起顺排；spots 生成空点位，坐标后补） */
+function guideToTrip(g){
+  const days = (g.days || []).map((d, i) => ({
+    id: uid(),
+    date: addDays(todayISO(), i),
+    title: `${d.day || 'Day ' + (i + 1)} · ${d.place || ''}`.trim(),
+    stay: '', desc: d.desc ? [d.desc] : [],
+    stops: (d.spots || []).map(n => ({ id: uid(), name: String(n).slice(0, 30), time: '', ticket: '', duration: '', lat: null, lng: null, note: '', img: null }))
+  }));
+  return {
+    name: (g.title || g.destination || 'AI 攻略行程').slice(0, 24),
+    emoji: '🗺️',
+    data: { _v: 2, budget: 0, days, tickets: [], expenses: [], hotels: [], journals: [], memos: [] }
+  };
+}
+
+/** 主页「✨ AI 攻略」：表单 → 生成 → 渲染结果卡（可导入为新行程） */
+function openGuideDialog(){
+  if (!window.TPAI) return toast('AI 模块未加载（ai.js）', 'err', 4000);
+  const st = TPAI.status();
+  const needCfg = st.mode === 'api' && !st.ready;
+  const chipsCN = ['贵州环线', '桂林阳朔', '云南大理丽江', '川西小环线', '西安', '青甘大环线', '新疆伊犁', '厦门'];
+  const chipsAb = ['日本关西 7天', '东京+镰仓 5天', '泰国曼谷清迈 6天', '巴厘岛 6天', '土耳其环线 9天', '新加坡+马来西亚 5天'];
+  const chipRow = (arr, cls) => arr.map(c => `<button type="button" class="gd-chip ${cls || ''}" data-city="${esc(c)}">${esc(c)}</button>`).join('');
+  const body = `
+    <div style="font-size:13px;color:var(--text-dim);line-height:1.75">
+      选个地方出攻略：行程框架、预算参考、风景描述，国内外都支持，配图尽力而为。<br>
+      <b>目的地可以留空</b>——在补充要求里写「五一最推荐去哪」「十一 7 天不贵又好玩」这类开放问题，AI 直接帮你选地方并给推荐理由。<br>
+      ${needCfg
+        ? `<span style="color:#d95751">⚠ 云端 AI 还没填 API Key —— 先去 AI 助手里配置（支持通义/智谱/Kimi 等，可联网搜索），或切到本地模型。</span>`
+        : (st.mode === 'api' ? '✅ 云端 AI 已就绪（联网搜索，效果最好）' : '✅ 本地模型模式（断网可用，攻略偏通用）')}
+    </div>
+    <div class="field"><label>想去哪（留空 = 让 AI 推荐）</label>
+      <input class="input" id="g-dest" placeholder="如：日本关西 / 土耳其 / 留空让 AI 推荐">
+      <div class="gd-form-chips">${chipRow(chipsCN)}</div>
+      <div class="gd-form-chips">${chipRow(chipsAb, 'gd-chip-ab')}</div></div>
+    <div class="grid-form">
+      <div class="field"><label>玩几天（留空=AI 定）</label><input class="input" id="g-days" type="number" min="1" max="30" placeholder="如 7"></div>
+      <div class="field"><label>几个人</label><input class="input" id="g-people" type="number" min="1" max="20" value="2"></div>
+      <div class="field"><label>出行方式</label>
+        <select class="input" id="g-mode"><option>自驾</option><option>公共交通</option><option>不限</option></select></div>
+    </div>
+    <div class="field"><label>补充要求 / 出行时间（可选）</label>
+      <input class="input" id="g-extra" placeholder="如：五一最推荐哪里 / 十一 7 天 / 带老人节奏慢 / 人均预算8000"></div>`;
+  openModal('✨ AI 目的地攻略', body, [
+    { text:'关闭', cls:'ghost', onClick: c => c() },
+    { text: needCfg ? '去配置 AI' : '生成攻略', cls:'primary', onClick: c => {
+      if (needCfg){ try{ TPAI.open(); }catch(e){} return; }
+      const dest = $('#g-dest').value.trim();
+      const daysRaw = $('#g-days').value.trim();
+      const opt = {
+        dest,
+        days: daysRaw ? Math.max(1, Math.min(30, Number(daysRaw) || 7)) : 0,
+        people: Math.max(1, Math.min(20, Number($('#g-people').value) || 2)),
+        mode: $('#g-mode').value,
+        extra: $('#g-extra').value.trim()
+      };
+      if (!dest && !opt.extra) return toast('填个目的地，或在补充要求里写「五一最推荐去哪」', 'warn', 3800);
+      c();
+      guideGenerate(opt);
+    }}
+  ], () => {
+    $$('.gd-chip').forEach(ch => ch.onclick = () => {
+      const v = ch.dataset.city;
+      const m = v.match(/(\d+)\s*天$/);          // 「日本关西 7天」→ 目的地+天数一起填
+      $('#g-dest').value = m ? v.slice(0, m.index).trim() : v;
+      if (m) $('#g-days').value = m[1];
+    });
+  });
+}
+
+async function guideGenerate(opt){
+  openModal('✨ 正在生成攻略…', `
+    <div style="text-align:center;padding:18px 6px">
+      <div style="font-size:40px;animation:gdSpin 1.6s linear infinite;display:inline-block">🗺️</div>
+      <div style="font-size:13.5px;color:var(--text-dim);margin-top:12px;line-height:1.9">
+        ${esc(opt.dest || 'AI 帮你选目的地')} · ${opt.days ? opt.days + ' 天' : '天数由 AI 定'} · ${opt.people} 人 · ${esc(opt.mode)}<br>
+        <span style="color:var(--text-mute)">AI 正在规划顺路行程、算预算、想风景怎么写…<br>云端模式会先联网查最新信息，约 20-60 秒；本地模型首次要下载，请耐心等。</span>
+      </div>
+    </div>`, [], null);
+  try{
+    const full = await TPAI.ask(guideSystemPrompt(), guideUserPrompt(opt), null, true, 3500);
+    const g = extractJSON(full);
+    closeModal();
+    if (!g || !(g.days || []).length){
+      // JSON 没解出来：把原文给用户（仍有参考价值）
+      guideShowRaw(full || '(空回复)', opt);
+      return;
+    }
+    guideShowResult(g);
+  }catch(err){
+    closeModal();
+    const msg = err && err.message ? err.message : String(err);
+    if (msg === 'NO_API_KEY') toast('云端 AI 未配置 API Key，点「✨ AI 攻略」里的「去配置 AI」', 'err', 4500);
+    else if (msg === 'NO_WEBGPU') toast('本地模型需 WebGPU（Chrome/Edge），或改用云端模式', 'err', 4500);
+    else if (msg === 'LOADING') toast('本地模型还在加载中，稍等几秒再点', 'warn', 4000);
+    else toast('攻略生成失败：' + msg, 'err', 4500);
+  }
+}
+
+/** 结果渲染：头部风景卡 + 每日框架（配图） + 预算 + 提示 + 导入按钮 */
+function guideShowResult(g){
+  const dayRows = (g.days || []).map((d, i) => `
+    <div class="gd-day">
+      <div class="gd-thumb" id="gd-thumb-${i}">🏞️</div>
+      <div class="gd-daybody">
+        <div class="gd-daytitle">${esc(d.day || 'Day ' + (i + 1))} ${esc(d.place || '')}</div>
+        <div class="gd-daydesc">${esc(d.desc || '')}</div>
+        ${(d.spots || []).length ? `<div class="gd-spots">${d.spots.map(s => `<span class="gd-spot">${esc(s)}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`).join('');
+  const budgetRows = (g.budget || []).map(b => `
+    <div class="gd-brow"><span>${esc(b.item)}</span><b>${esc(b.amount)}</b></div>`).join('');
+  const tips = (g.tips || []).map(t => `<li>${esc(t)}</li>`).join('');
+  const body = `
+    <div class="gd-scroll">
+      <div class="gd-head">
+        <div class="gd-title">${esc(g.title || g.destination || '旅行攻略')}</div>
+        ${g.bestSeason ? `<span class="gd-season">📅 ${esc(g.bestSeason)}</span>` : ''}
+        ${g.why ? `<div class="gd-why">💡 推荐理由：${esc(g.why)}</div>` : ''}
+        ${g.scenery ? `<div class="gd-scenery">🏞 ${esc(g.scenery)}</div>` : ''}
+      </div>
+      <div class="gd-days">${dayRows}</div>
+      ${budgetRows ? `<div class="gd-budget"><div class="gd-sech">💰 预算参考</div>${budgetRows}
+        ${g.budgetNote ? `<div class="gd-note">💡 ${esc(g.budgetNote)}</div>` : ''}</div>` : ''}
+      ${tips ? `<div class="gd-budget"><div class="gd-sech">📌 实用提示</div><ul class="gd-tips">${tips}</ul></div>` : ''}
+      <div class="gd-src">风景图片来自 Wikimedia Commons 免费图库，仅为示意；加载失败时会保留文字描述。</div>
+    </div>`;
+  openModal('🗺️ 攻略 · ' + (g.destination || ''), body, [
+    { text:'关闭', cls:'ghost', onClick: c => c() },
+    { text:'复制文本', cls:'ghost', onClick: c => {
+      const txt = guideToText(g);
+      (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject())
+        .then(() => toast('攻略文本已复制', 'ok'))
+        .catch(() => toast('复制失败，请手动选择文本', 'warn'));
+    }},
+    { text:'导入为新行程', cls:'primary', onClick: c => {
+      const trip = guideToTrip(g);
+      if (!trip.data.days.length) return toast('这份攻略没有可导入的行程段', 'warn');
+      c();
+      confirmBox(`把「${trip.name}」导入为新旅行档案？\n日期从今天起顺排，景点坐标可稍后在编辑页补全。`, () => {
+        addTripFromData(trip, trip.name);
+      }, '确认导入');
+    }}
+  ]);
+  // 异步补图（Commons 命中 → 换图；失败 → 保留 emoji）
+  (g.days || []).forEach((d, i) => {
+    const q = d.imageQuery || (d.place ? d.place + ' 风景' : '');
+    if (!q) return;
+    guideWikiImage(q).then(url => {
+      const box = document.getElementById('gd-thumb-' + i);
+      if (box && url) box.innerHTML = `<img src="${esc(url)}" alt="${esc(q)}" loading="lazy" referrerpolicy="no-referrer">`;
+    });
+  });
+}
+function guideShowRaw(text, opt){
+  openModal('🗺️ 攻略（原始回复）', `
+    <div style="font-size:12.5px;color:var(--text-mute);margin-bottom:8px">AI 返回的内容没能解析成结构化攻略（本地小模型可能格式不稳），原文如下，可复制自行阅读：</div>
+    <pre style="white-space:pre-wrap;font-size:13px;line-height:1.8;background:var(--bg-soft);border:1px solid var(--line);border-radius:10px;padding:12px;max-height:50vh;overflow:auto">${esc(String(text).slice(0, 4000))}</pre>`,
+    [{ text:'关闭', cls:'ghost', onClick: c => c() },
+     { text:'复制全文', cls:'primary', onClick: c => { (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('已复制')); } }]);
 }
 
 function openTrip(id, forceEdit){
@@ -10199,6 +10470,7 @@ function bindGlobal(){
   $('#ovExportPoster').onclick = () => exportPoster(activeTripId);
   $('#btnTheme').onclick = themePicker;
   $('#btnNewTrip').onclick = newTrip;
+  $('#btnGuide').onclick = openGuideDialog;
   $('#btnImportText').onclick = importTextDialog;
   // 记账面板底部的备份入口（手机端侧栏被收起时的主要入口）
   $('#btnExport2').onclick = () => exportMenu();
